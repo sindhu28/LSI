@@ -85,11 +85,37 @@ public class HelloWorld extends HttpServlet {
 			for (int i = 0; i < cookies.length; i++) {
 				Cookie cookie = cookies[i];
 				System.out.println(cookie.getValue());
-				if (cookieName.equals(cookie.getName()))
+				int sessionID =  Integer.valueOf(cookie.getValue().split("\\s+")[0]);
+				if (cookieName.equals(cookie.getName()) && sessionTable.containsKey(sessionID))
 					return (cookie.getValue());
 			}
 		}
 		return null;
+	}
+	
+	private int getSessionID(HttpServletRequest request) {
+		String value = getCookieValue(request.getCookies(), COOKIE_NAME);
+		if(value!= null) {
+			return Integer.valueOf(value.split("\\s+")[0]);
+		}
+		return -1;
+	}
+	
+	
+	private boolean isCookieStale(HttpServletRequest request) {
+		int sessionID = getSessionID(request);
+		if(sessionTable.containsKey(sessionID)) {
+			Date oldDate = sessionTable.get(sessionID).getDate();
+			Timestamp oldDateTS = new Timestamp(oldDate.getTime());
+			//TODO try to get date from http request and not current system time
+			
+			Timestamp currentTS = new Timestamp(new Date().getTime());
+			long diffTS = currentTS.getTime() - oldDateTS.getTime();
+			if (diffTS >= EXPIRATION_PERIOD) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	private void updateCookie(HttpServletRequest request, HttpServletResponse response) {
@@ -106,7 +132,6 @@ public class HelloWorld extends HttpServlet {
 			  sessionTable.put(sessionID, value);
 			  
 		  } else {
-		  
 			  String cookieValue = getCookieValue(request.getCookies(), COOKIE_NAME); 
 			  String sessionID = cookieValue.split("\\s+")[0]; 
 			  cookieValue = sessionID + " " + versionNo++ + " location";
@@ -159,11 +184,13 @@ public class HelloWorld extends HttpServlet {
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
-		//TODO isCookieStale()
-			//get oldDate from Map 
-			//Convert oldDate to oldDateTS
-			//find difference between tStamp and oldDateTS 
-			//This should be less than or equal to EXPIRATION_PERIOD 
+		if(isCookieStale(request)) {
+			startMessage = END_MESSAGE;
+			System.out.println(sessionTable.size());
+			sessionTable.remove(sessionID);
+			System.out.println(sessionTable.size());	
+			return;
+		}
 		
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
@@ -171,23 +198,32 @@ public class HelloWorld extends HttpServlet {
 		out.println("<h2>" + action + "</h2>");
  
 		if (action.equals("Replace") || action.equals("Refresh")) {
-			if (!request.getParameter("replace_string").equals("")) {
-				startMessage = request.getParameter("replace_string");
-			} else {
-				startMessage = DEFAULT_REPLACE_MESSAGE;
+			if(action.equals("Replace")) {
+				if (!request.getParameter("replace_string").equals("")) {
+					startMessage = request.getParameter("replace_string");
+				} 
+				//If user doesn't enter anything in textbox, no message is displayed
+			} 
+			if(action.equals("Refresh")) {
+					int sessionID = getSessionID(request);
+					if(sessionID != -1 ) {// not the first refresh click 
+						startMessage = sessionTable.get(sessionID).getMessage();	
+					} else {
+						startMessage = DEFAULT_REPLACE_MESSAGE;	
+					}
 			}
 			out.println("<h3>" + startMessage + "</h3>");
-			// update session timeout and add/update cookie entry to table
 			updateCookie(request, response);
-			response.sendRedirect("/Practise/HelloWorld");
+			response.sendRedirect("/HelloWorld/HelloWorld");
 				
 		} else if (action.equals("Logout")) {
 			startMessage = END_MESSAGE;
-			// update cookie table
+			System.out.println(sessionTable.size());
+			sessionTable.remove(sessionID);
+			System.out.println(sessionTable.size());
 		} else {	
 			System.out.println("Code never reaches here!!!");
 		}
 		
-	}
-	
+	}	
 }
