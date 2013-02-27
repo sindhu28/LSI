@@ -8,7 +8,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
-
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
@@ -27,7 +27,7 @@ public class HelloWorld extends HttpServlet {
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSION";
 	private static final long EXPIRATION_PERIOD = 999999999;
-	private static volatile int sessionID = 1;
+	private static AtomicInteger sessionID = new AtomicInteger();
 	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<>();
 	
 
@@ -130,18 +130,15 @@ public class HelloWorld extends HttpServlet {
 	
 	private void updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) {
 		Date date = new Date();
-		Timestamp tStamp = new Timestamp(date.getTime()+EXPIRATION_PERIOD);
 		Cookie clientCookie;	
 		  if (getCookieValue(request.getCookies(), COOKIE_NAME) == null) {
 			  //Create a new cookie for a new session
-			 
 			  int versionNo = 1;
-			  String cookieValue = "" + sessionID + " " + versionNo + " " + "location";
-			  System.out.println("cookie value:" + cookieValue);
+			  int session = sessionID.incrementAndGet();
+			  String cookieValue = "" + session + " " + versionNo + " " + "location";
 			  clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
-			  sessionTable.put(sessionID, value);
-			  sessionID++;
+			  sessionTable.put(session, value);
 		  } else {
 			  //update the existing cookie with new values
 			  clientCookie = getClientCookie(request.getCookies(), COOKIE_NAME);
