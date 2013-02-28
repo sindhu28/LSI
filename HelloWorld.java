@@ -28,6 +28,7 @@ public class HelloWorld extends HttpServlet {
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSION";
 	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
+	private static final int MAX_STRING_LENGTH = 512; //10 minutes in milliseconds
 	private static final int MAX_ENTRIES = 1000;
 	private static final int TIMEOUT_VALUE = 600000; //10 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
@@ -254,8 +255,12 @@ public class HelloWorld extends HttpServlet {
 						startMessage = sessionTable.get(sessionID).getMessage();
 					}
 			}
+			if(startMessage.length() > MAX_STRING_LENGTH){
+				startMessage = startMessage.substring(0, MAX_STRING_LENGTH);
+			}
 			updateCookie(request, response, startMessage);
 			response.sendRedirect("/HelloWorld/HelloWorld");
+//			response.sendRedirect("/HelloWorld");
 				
 		} else if (action.equals("Logout")) {
 			//Logout the user
