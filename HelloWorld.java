@@ -22,6 +22,7 @@ import javax.servlet.http.HttpServletResponse;
  */
 @WebServlet("/HelloWorld")
 public class HelloWorld extends HttpServlet {
+	//All global defines are here
 	private static final long serialVersionUID = 1L;
 	private static final String DEFAULT_REPLACE_MESSAGE = "This is a new message!";
 	private static final String START_MESSAGE = "Hello, User!";
@@ -36,6 +37,7 @@ public class HelloWorld extends HttpServlet {
 	private Timer timer = new Timer();
 
 	private class SessionTableValue {
+		//Class to hold data in Session Table
 		int version;
 		String message;
 		Date date;
@@ -74,7 +76,7 @@ public class HelloWorld extends HttpServlet {
 	
 	private class RunTimer extends TimerTask {
 		   public void run() {
-//			  System.out.println("in run Timer");
+			   //Schedule a timer to call session Table cleaner function
 			  runSessionTableCleaner();
 		      timer.schedule(new RunTimer(), TIMEOUT_VALUE);
 		   }
@@ -84,7 +86,6 @@ public class HelloWorld extends HttpServlet {
 	 * Default constructor.
 	 */
 	public HelloWorld() {
-		System.out.println("in main");
         RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, TIMEOUT_VALUE);
 	}
@@ -94,7 +95,8 @@ public class HelloWorld extends HttpServlet {
 			for (int i = 0; i < cookies.length; i++) {
 				Cookie cookie = cookies[i];
 				int sessionID =  Integer.valueOf(cookie.getValue().split("\\s+")[0]);
-				//check if there is a cookie and also an entry in the sessionTable to verify if it is valid
+				//verify if cookie is valid
+				//check if there is a cookie returned and also if an entry exists in the sessionTable 
 				if (cookieName.equals(cookie.getName()) && sessionTable.containsKey(sessionID))
 					return (cookie.getValue());
 			}
@@ -130,7 +132,6 @@ public class HelloWorld extends HttpServlet {
 			//compare date in cookie and date stored in sessionTable
 			Date oldDate = sessionTable.get(sessionID).getDate();
 			Timestamp oldTS = new Timestamp(oldDate.getTime());
-			//TODO try to get date from http request and not current system time
 			Timestamp currentTS = new Timestamp(new Date().getTime());
 			long diffTS = currentTS.getTime() - oldTS.getTime();
 			if (diffTS >= EXPIRATION_PERIOD) {
@@ -173,10 +174,7 @@ public class HelloWorld extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		System.out.println("In doGet ");
 		response.setContentType("text/html");
-		System.out.println(sessionTable);
 		 
 		//Time Expiry is calculated at current + 100s. 
 		Date date = new Date();
@@ -218,11 +216,10 @@ public class HelloWorld extends HttpServlet {
 		
 		PrintWriter out = response.getWriter();
 		int sessionID = getSessionID(request);
+		//Check if cookie is stale
 		if(isCookieStale(request)) {
-			//Check if cookie is stale
-			System.out.println(sessionTable.size());
-			sessionTable.remove(sessionID);
-			System.out.println(sessionTable.size());	
+			//Remove entry from session Table as Cookie is stale
+			sessionTable.remove(sessionID);	
 			out.println("<h2>"+END_MESSAGE+"</h2>");
 			return;
 		}
@@ -255,9 +252,7 @@ public class HelloWorld extends HttpServlet {
 				
 		} else if (action.equals("Logout")) {
 			//Logout the user
-			System.out.println(sessionTable.size());
 			sessionTable.remove(sessionID);
-			System.out.println(sessionTable.size());
 			out.println("<h2>"+END_MESSAGE+"</h2>");
 		} else {	
 			System.out.println("Code never reaches here!!!");
@@ -266,10 +261,13 @@ public class HelloWorld extends HttpServlet {
 	}	
 		
 	private void runSessionTableCleaner(){
+		//Check if the session Table has over grown
+		//Don't clean if the size of session Table has not exceeded a predifined limit
 		if(sessionTable.size() >= MAX_ENTRIES){
 		Iterator<Integer> it = sessionTable.keySet().iterator();
 		Timestamp currentTS = new Timestamp(new Date().getTime());
 		while (it.hasNext()) {
+			//Remove all stale entries from Session Table by cheking if the cookie has expired
 			int key = it.next();
 	    	Date oldDate = sessionTable.get(key).getDate();
 	    	Timestamp oldTS = new Timestamp(oldDate.getTime());
@@ -278,7 +276,6 @@ public class HelloWorld extends HttpServlet {
 				sessionTable.remove(key);
 			}	    	
 	    }
-	    System.out.println("Cleaned table: " + sessionTable.size());
 	}
   }
 }
