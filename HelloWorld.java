@@ -1,11 +1,11 @@
-
+package sample1;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
@@ -27,12 +27,12 @@ public class HelloWorld extends HttpServlet {
 	private static final String START_MESSAGE = "Hello, User!";
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSION";
-	private static final long EXPIRATION_PERIOD = 999999999;
-	private static final long MAX_ENTRIES = 10;
+	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
+	private static final int MAX_ENTRIES = 1000;
 	private static AtomicInteger sessionID = new AtomicInteger();
 	private static AtomicInteger numEntries = new AtomicInteger();
-	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<>();
-	
+	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<Integer, SessionTableValue>();
+	private SessionTableCleaner cleanerThread;
 
 	private class SessionTableValue {
 		int version;
@@ -75,6 +75,7 @@ public class HelloWorld extends HttpServlet {
 	 * Default constructor.
 	 */
 	public HelloWorld() {
+		cleanerThread = new SessionTableCleaner();
 	}
 
 	private String getCookieValue(Cookie[] cookies, String cookieName) {
@@ -130,21 +131,6 @@ public class HelloWorld extends HttpServlet {
 		return false;
 	}
 	
-	private void cleanSessionTable(){
-		Iterator<Integer> it = sessionTable.keySet().iterator();
-	    while (it.hasNext()) {
-	    	int key = it.next();
-	    	Date oldDate = sessionTable.get(key).getDate();
-	    	Timestamp oldTS = new Timestamp(oldDate.getTime());
-	    	Timestamp currentTS = new Timestamp(new Date().getTime());
-	    	long diffTS = currentTS.getTime() - oldTS.getTime();
-			if (diffTS >= EXPIRATION_PERIOD){
-				sessionTable.remove(key);
-				numEntries.decrementAndGet();
-			}	    	
-	    }
-	}
-	
 	private void updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) {
 		Date date = new Date();
 		Cookie clientCookie;	
@@ -157,8 +143,9 @@ public class HelloWorld extends HttpServlet {
 			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			  sessionTable.put(session, value);
 			  int num = numEntries.incrementAndGet();
-			  if(num > MAX_ENTRIES){
-				  cleanSessionTable();
+			  if(num >= MAX_ENTRIES){
+				  //cleanSessionTable();
+				  cleanerThread.run();
 			  }
 		  } else {
 			  //update the existing cookie with new values
@@ -170,6 +157,7 @@ public class HelloWorld extends HttpServlet {
 			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			  sessionTable.replace(sessionID, value);
 		  }
+		  clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
 		  response.addCookie(clientCookie);
 	}
 
@@ -186,6 +174,10 @@ public class HelloWorld extends HttpServlet {
 		 
 		//Time Expiry is calculated at current + 100s. 
 		Date date = new Date();
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
+		date = cal.getTime();
 		
 		SimpleDateFormat ft = new SimpleDateFormat(
 				"MMMMM dd, yyyy hh:mm:ss a zzz");
@@ -270,4 +262,24 @@ public class HelloWorld extends HttpServlet {
 		}
 		
 	}	
+	
+	private class SessionTableCleaner implements Runnable{
+		@Override
+		public void run() {
+		    Iterator<Integer> it = sessionTable.keySet().iterator();
+		    while (it.hasNext()) {
+		    	int key = it.next();
+		    	Date oldDate = sessionTable.get(key).getDate();
+		    	
+		    	Timestamp oldTS = new Timestamp(oldDate.getTime());
+		    	Timestamp currentTS = new Timestamp(new Date().getTime());
+		    	long diffTS = currentTS.getTime() - oldTS.getTime();
+		    	if (diffTS >= EXPIRATION_PERIOD){
+					sessionTable.remove(key);
+					numEntries.decrementAndGet();
+				}	    	
+		    }
+		    //System.out.println("Cleaned table: " + sessionTable.size());
+		}	
+	}
 }
