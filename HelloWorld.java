@@ -1,5 +1,3 @@
-package sample1;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -7,6 +5,8 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,10 +29,11 @@ public class HelloWorld extends HttpServlet {
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSION";
 	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
 	private static final int MAX_ENTRIES = 1000;
+	private static final int TIMEOUT_VALUE = 600000; //10 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
 	private static AtomicInteger numEntries = new AtomicInteger();
 	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<Integer, SessionTableValue>();
-	private SessionTableCleaner cleanerThread;
+	private Timer timer = new Timer();
 
 	private class SessionTableValue {
 		int version;
@@ -71,12 +72,21 @@ public class HelloWorld extends HttpServlet {
 		
 	}
 	
+	private class RunTimer extends TimerTask {
+		   public void run() {
+			  System.out.println("in run Timer");
+			  runSessionTableCleaner();
+		      timer.schedule(new RunTimer(), TIMEOUT_VALUE);
+		   }
+	    }
+	
 	/**
 	 * Default constructor.
 	 */
 	public HelloWorld() {
-		cleanerThread = new SessionTableCleaner();
-		cleanerThread.run();
+		System.out.println("in main");
+        RunTimer runTimer = new RunTimer();
+        timer.schedule(runTimer, TIMEOUT_VALUE);
 	}
 
 	private String getCookieValue(Cookie[] cookies, String cookieName) {
@@ -84,7 +94,6 @@ public class HelloWorld extends HttpServlet {
 			for (int i = 0; i < cookies.length; i++) {
 				Cookie cookie = cookies[i];
 				int sessionID =  Integer.valueOf(cookie.getValue().split("\\s+")[0]);
-				System.out.println("sessio id : "+sessionID);
 				//check if there is a cookie and also an entry in the sessionTable to verify if it is valid
 				if (cookieName.equals(cookie.getName()) && sessionTable.containsKey(sessionID))
 					return (cookie.getValue());
@@ -260,30 +269,23 @@ public class HelloWorld extends HttpServlet {
 		}
 		
 	}	
-	
-	private class SessionTableCleaner implements Runnable{
-		@Override
-		public void run() {
-			while(true) {
-				if(numEntries.get() >= MAX_ENTRIES){
-					Iterator<Integer> it = sessionTable.keySet().iterator();
-					while (it.hasNext()) {
-						int key = it.next();
-				    	Date oldDate = sessionTable.get(key).getDate();
-				    	
-				    	Timestamp oldTS = new Timestamp(oldDate.getTime());
-				    	Timestamp currentTS = new Timestamp(new Date().getTime());
-				    	long diffTS = currentTS.getTime() - oldTS.getTime();
-				    	if (diffTS >= EXPIRATION_PERIOD){
-							sessionTable.remove(key);
-							numEntries.decrementAndGet();
-						}	    	
-				    }
-				//System.out.println("Cleaned table: " + sessionTable.size());
-				} else {
-					//reset timer
-				}
-			}
-		}	
+		
+	private void runSessionTableCleaner(){
+		if(numEntries.get() >= MAX_ENTRIES){
+		Iterator<Integer> it = sessionTable.keySet().iterator();
+		while (it.hasNext()) {
+			int key = it.next();
+	    	Date oldDate = sessionTable.get(key).getDate();
+	    	
+	    	Timestamp oldTS = new Timestamp(oldDate.getTime());
+	    	Timestamp currentTS = new Timestamp(new Date().getTime());
+	    	long diffTS = currentTS.getTime() - oldTS.getTime();
+	    	if (diffTS >= EXPIRATION_PERIOD){
+				sessionTable.remove(key);
+				numEntries.decrementAndGet();
+			}	    	
+	    }
+	    System.out.println("Cleaned table: " + sessionTable.size());
 	}
+  }
 }
