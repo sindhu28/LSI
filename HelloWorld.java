@@ -76,6 +76,7 @@ public class HelloWorld extends HttpServlet {
 	 */
 	public HelloWorld() {
 		cleanerThread = new SessionTableCleaner();
+		cleanerThread.run();
 	}
 
 	private String getCookieValue(Cookie[] cookies, String cookieName) {
@@ -142,11 +143,7 @@ public class HelloWorld extends HttpServlet {
 			  clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			  sessionTable.put(session, value);
-			  int num = numEntries.incrementAndGet();
-			  if(num >= MAX_ENTRIES){
-				  //cleanSessionTable();
-				  cleanerThread.run();
-			  }
+			  numEntries.incrementAndGet();
 		  } else {
 			  //update the existing cookie with new values
 			  clientCookie = getClientCookie(request.getCookies(), COOKIE_NAME);
@@ -200,6 +197,7 @@ public class HelloWorld extends HttpServlet {
 				+ "Session on " + InetAddress.getLocalHost().getHostName()
 				+ ":" + request.getLocalPort() + "<br/><br/>" + "Expires "
 				+ ft.format(date));
+		updateCookie(request, response, startMessage);
 	}
 
 	/**
@@ -266,20 +264,26 @@ public class HelloWorld extends HttpServlet {
 	private class SessionTableCleaner implements Runnable{
 		@Override
 		public void run() {
-		    Iterator<Integer> it = sessionTable.keySet().iterator();
-		    while (it.hasNext()) {
-		    	int key = it.next();
-		    	Date oldDate = sessionTable.get(key).getDate();
-		    	
-		    	Timestamp oldTS = new Timestamp(oldDate.getTime());
-		    	Timestamp currentTS = new Timestamp(new Date().getTime());
-		    	long diffTS = currentTS.getTime() - oldTS.getTime();
-		    	if (diffTS >= EXPIRATION_PERIOD){
-					sessionTable.remove(key);
-					numEntries.decrementAndGet();
-				}	    	
-		    }
-		    //System.out.println("Cleaned table: " + sessionTable.size());
+			while(true) {
+				if(numEntries.get() >= MAX_ENTRIES){
+					Iterator<Integer> it = sessionTable.keySet().iterator();
+					while (it.hasNext()) {
+						int key = it.next();
+				    	Date oldDate = sessionTable.get(key).getDate();
+				    	
+				    	Timestamp oldTS = new Timestamp(oldDate.getTime());
+				    	Timestamp currentTS = new Timestamp(new Date().getTime());
+				    	long diffTS = currentTS.getTime() - oldTS.getTime();
+				    	if (diffTS >= EXPIRATION_PERIOD){
+							sessionTable.remove(key);
+							numEntries.decrementAndGet();
+						}	    	
+				    }
+				//System.out.println("Cleaned table: " + sessionTable.size());
+				} else {
+					//reset timer
+				}
+			}
 		}	
 	}
 }
