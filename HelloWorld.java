@@ -32,7 +32,6 @@ public class HelloWorld extends HttpServlet {
 	private static final int MAX_ENTRIES = 1000;
 	private static final int TIMEOUT_VALUE = 600000; //10 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
-	private static AtomicInteger numEntries = new AtomicInteger();
 	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<Integer, SessionTableValue>();
 	private Timer timer = new Timer();
 
@@ -75,7 +74,7 @@ public class HelloWorld extends HttpServlet {
 	
 	private class RunTimer extends TimerTask {
 		   public void run() {
-			  System.out.println("in run Timer");
+//			  System.out.println("in run Timer");
 			  runSessionTableCleaner();
 		      timer.schedule(new RunTimer(), TIMEOUT_VALUE);
 		   }
@@ -135,10 +134,11 @@ public class HelloWorld extends HttpServlet {
 			Timestamp currentTS = new Timestamp(new Date().getTime());
 			long diffTS = currentTS.getTime() - oldTS.getTime();
 			if (diffTS >= EXPIRATION_PERIOD) {
+				//Cookie is stale
 				return true;
 			}
 		}
-		//Cookie is stale or there is no cookie for the in the sessionTable(new session)
+		//Cookie is not stale
 		return false;
 	}
 	
@@ -153,7 +153,6 @@ public class HelloWorld extends HttpServlet {
 			  clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			  sessionTable.put(session, value);
-			  numEntries.incrementAndGet();
 		  } else {
 			  //update the existing cookie with new values
 			  clientCookie = getClientCookie(request.getCookies(), COOKIE_NAME);
@@ -223,7 +222,6 @@ public class HelloWorld extends HttpServlet {
 			//Check if cookie is stale
 			System.out.println(sessionTable.size());
 			sessionTable.remove(sessionID);
-			numEntries.decrementAndGet();
 			System.out.println(sessionTable.size());	
 			out.println("<h2>"+END_MESSAGE+"</h2>");
 			return;
@@ -236,14 +234,7 @@ public class HelloWorld extends HttpServlet {
 		if (action.equals("Replace") || action.equals("Refresh")) {
 			//Replace the text with user typed text
 			if(action.equals("Replace")) {
-				if (!request.getParameter("replace_string").equals("")) {
-					//User typed message is displayed
-					startMessage = request.getParameter("replace_string");
-				} 
-				else{
-					//If user doesn't enter anything in textbox, nothing is displayed
-					startMessage = "";
-				}
+				startMessage = request.getParameter("replace_string");
 			} 
 			//Refresh the page with the same text retained
 			if(action.equals("Refresh")) {
@@ -266,7 +257,6 @@ public class HelloWorld extends HttpServlet {
 			//Logout the user
 			System.out.println(sessionTable.size());
 			sessionTable.remove(sessionID);
-			numEntries.decrementAndGet();
 			System.out.println(sessionTable.size());
 			out.println("<h2>"+END_MESSAGE+"</h2>");
 		} else {	
@@ -276,18 +266,16 @@ public class HelloWorld extends HttpServlet {
 	}	
 		
 	private void runSessionTableCleaner(){
-		if(numEntries.get() >= MAX_ENTRIES){
+		if(sessionTable.size() >= MAX_ENTRIES){
 		Iterator<Integer> it = sessionTable.keySet().iterator();
+		Timestamp currentTS = new Timestamp(new Date().getTime());
 		while (it.hasNext()) {
 			int key = it.next();
 	    	Date oldDate = sessionTable.get(key).getDate();
-	    	
 	    	Timestamp oldTS = new Timestamp(oldDate.getTime());
-	    	Timestamp currentTS = new Timestamp(new Date().getTime());
 	    	long diffTS = currentTS.getTime() - oldTS.getTime();
 	    	if (diffTS >= EXPIRATION_PERIOD){
 				sessionTable.remove(key);
-				numEntries.decrementAndGet();
 			}	    	
 	    }
 	    System.out.println("Cleaned table: " + sessionTable.size());
