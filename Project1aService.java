@@ -25,13 +25,11 @@ import javax.servlet.http.HttpServletResponse;
  */
 @WebServlet("/Project1aService")
 public class Project1aService extends HttpServlet {
-	//All global defines are here
 	private static final long serialVersionUID = 1L;
-	//private static final String DEFAULT_REPLACE_MESSAGE = "This is a new message!";
 	private static final String START_MESSAGE = "Hello, User!";
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSIONvn76";
-	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
+	private static final int EXPIRATION_PERIOD = 60000; //10 minutes in milliseconds
 	private static final int MAX_STRING_LENGTH = 512; //10 minutes in milliseconds
 	private static final int MAX_ENTRIES = 1000;
 	private static final int TIMEOUT_VALUE = 600000; //10 minutes in milliseconds
@@ -179,31 +177,61 @@ public class Project1aService extends HttpServlet {
 	private void updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) {
 		Date date = new Date();
 		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
-		  if (clientCookie == null) {
-			  //Create a new cookie for a new session
-			  int versionNo = 1;
-			  int session = sessionID.incrementAndGet();
+		if (clientCookie == null) { //Create a new cookie for a new session if one does not exist 
+			int versionNo = 1;
+			int session = sessionID.incrementAndGet();
 			  
-			  //Location metadata will be appropriately added when needed
-			  String cookieValue = "" + session + " " + versionNo + " " + "location";
-			  clientCookie = new Cookie(COOKIE_NAME, cookieValue);
-			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
-			  sessionTable.put(session, value);
-		  } else {
-			  //update the existing cookie with new values
-			  int sessionID = getSessionID(request);
-			  int versionNo = (sessionTable.get(sessionID).getVersion())+1;
+			//Location metadata will be appropriately added when needed
+			String cookieValue = "" + session + " " + versionNo + " " + "location";
+			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
+			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
+			sessionTable.put(session, value);
+		} else { // Update the existing cookie with new values
+			int sessionID = getSessionID(request);
+			int versionNo = (sessionTable.get(sessionID).getVersion())+1;
 			  
-			  //Location metadata will be appropriately added when needed
-			  String cookieValue = Integer.toString(sessionID) + " " + versionNo + " location";
-			  clientCookie.setValue(cookieValue);
-			  SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
-			  sessionTable.replace(sessionID, value);
-		  }
-		  clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
-		  response.addCookie(clientCookie);
+			//Location metadata will be appropriately added when needed
+			String cookieValue = Integer.toString(sessionID) + " " + versionNo + " location";
+			clientCookie.setValue(cookieValue);
+			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
+			sessionTable.replace(sessionID, value);
+		}
+		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
+		response.addCookie(clientCookie);
 	}
 
+	/**
+	 * Generate HTML markup
+	 * @param startMessage
+	 * @param hostname
+	 * @param port
+	 * @return markup
+	 */
+	protected String generateMarkup(String startMessage, String hostname, int port) {
+		//Time Expiry is calculated at current + 10 minutes. 
+		Date date = new Date();
+		Calendar cal = Calendar.getInstance();
+		cal.setTime(date);
+		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
+		date = cal.getTime();
+				
+		SimpleDateFormat ft = new SimpleDateFormat(
+				"MMMMM dd, yyyy hh:mm:ss a zzz");	
+		
+		String markup = "<h2>"
+				+ startMessage
+				+ "</h2>"
+				+ "<form action=\"\" method=\"post\"> "
+				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
+				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
+				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
+				+ "Session on " + hostname
+				+ ":" + port + "<br/><br/>" + "Expires "
+				+ ft.format(date);
+		
+		return markup;
+	}
+	
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
@@ -211,38 +239,19 @@ public class Project1aService extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		response.setContentType("text/html");
-		 
-		//Time Expiry is calculated at current  + 100s. 
-		Date date = new Date();
-		Calendar cal = Calendar.getInstance();
-		cal.setTime(date);
-		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
-		date = cal.getTime();
-		
-		SimpleDateFormat ft = new SimpleDateFormat(
-				"MMMMM dd, yyyy hh:mm:ss a zzz");
 		
 		PrintWriter out = response.getWriter();
-		
 		String startMessage = START_MESSAGE;
-		
 		int sessionID = getSessionID(request);
-		if(sessionID != -1)
+		
+		if(sessionID != -1) {
 			startMessage = sessionTable.get(sessionID).getMessage();
-
-		out.println("<h2>"
-				+ startMessage
-				+ "</h2>"
-				+ "<form action=\"\" method=\"post\"> "
-				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
-				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
-				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
-				+ "Session on " + InetAddress.getLocalHost().getHostName()
-				+ ":" + request.getLocalPort() + "<br/><br/>" + "Expires "
-				+ ft.format(date));
+		}
 		
 		//Give the user a cookie on first access to our service.
 		updateCookie(request, response, startMessage);
+		
+		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostName(), request.getLocalPort()));
 	}
 
 	/**
@@ -254,36 +263,31 @@ public class Project1aService extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		int sessionID = getSessionID(request);
 		
-		//Check if cookie is stale
-		if(isCookieStale(sessionID)) {
-			//Remove entry from session Table as Cookie is stale
-			sessionTable.remove(sessionID);	
-			out.println("<h2>"+END_MESSAGE+"</h2>");
-			return;
-		}
-		
 		String startMessage = START_MESSAGE;
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
  
-		if (action.equals("Replace") || action.equals("Refresh")) {
-			//Replace the text with user typed text
-			if(action.equals("Replace")) {
+		if (action.equals("Logout")) {
+			//remove session table entry and print bye message
+			sessionTable.remove(sessionID);
+			out.println("<h2>"+END_MESSAGE+"</h2>");	
+		} else {
+			//Extract replace string and set to startMessage
+			if (action.equals("Replace")) {
 				startMessage = request.getParameter("replace_string");
-			} 
-			
-			//Refresh the page with the same text retained
-			if(action.equals("Refresh")) {
-//					if(sessionID == -1 ) {
-//						//User Clicks refresh before changing any text
-//						startMessage = DEFAULT_REPLACE_MESSAGE;		
-//					} else {
-//					
-				//Previously entered message is displayed
-				startMessage = sessionTable.get(sessionID).getMessage();
-//					}
 			}
 			
+			//Handle valid and stale(expired) cookies 
+			if(!isCookieStale(sessionID)) {
+				//Refresh the page with the same text retained only if cookie is valid
+				if(action.equals("Refresh")) {
+					startMessage = sessionTable.get(sessionID).getMessage();
+				}
+			} else { //Cookie is stale so remove entry from session table
+				sessionTable.remove(sessionID);
+			}
+			
+			//Validate startMessage
 			//Ensure the entered message is <= MAX_STRING_LENGTH(512 bytes)
 			if(startMessage.length() > MAX_STRING_LENGTH){
 				startMessage = startMessage.substring(0, MAX_STRING_LENGTH);
@@ -291,17 +295,9 @@ public class Project1aService extends HttpServlet {
 			
 			//Update cookie for all further actions except Logout
 			updateCookie(request, response, startMessage);
-			//response.sendRedirect("/Project1aService");
-			response.sendRedirect("/CS5300Project1a/Project1aService");
-				
-		} else if (action.equals("Logout")) {
-			//remove session table entry and print bye message
-			sessionTable.remove(sessionID);
-			out.println("<h2>"+END_MESSAGE+"</h2>");
-		} else {	
-			System.out.println("Code never reaches here!!!");
+			
+			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostName(), request.getLocalPort()));
 		}
-		
 	}	
 		
 	/**
