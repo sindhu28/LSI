@@ -8,6 +8,8 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,10 +31,10 @@ public class Project1aService extends HttpServlet {
 	private static final String START_MESSAGE = "Hello, User!";
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSIONvn76";
-	private static final int EXPIRATION_PERIOD = 60000; //10 minutes in milliseconds
-	private static final int MAX_STRING_LENGTH = 512; //10 minutes in milliseconds
+	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
+	private static final int MAX_STRING_LENGTH = 460; 
 	private static final int MAX_ENTRIES = 1000;
-	private static final int TIMEOUT_VALUE = 600000; //10 minutes in milliseconds
+	private static final int SCHEDULER_TIMEOUT = 600000; //10 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
 	private static ConcurrentHashMap<Integer, SessionTableValue> sessionTable = new ConcurrentHashMap<Integer, SessionTableValue>();
 	private Timer timer = new Timer();
@@ -86,7 +88,7 @@ public class Project1aService extends HttpServlet {
 			   runSessionTableCleaner();
 			  
 			   //Schedule a timer to call session Table cleaner function
-			   timer.schedule(new RunTimer(), TIMEOUT_VALUE);
+			   timer.schedule(new RunTimer(), SCHEDULER_TIMEOUT);
 		   }
 	    }
 	
@@ -96,7 +98,7 @@ public class Project1aService extends HttpServlet {
 	public Project1aService() {
 		//Initialize and schedule timer for cleaner thread
         RunTimer runTimer = new RunTimer();
-        timer.schedule(runTimer, TIMEOUT_VALUE);
+        timer.schedule(runTimer, SCHEDULER_TIMEOUT);
 	}
 	
 	/** 
@@ -110,7 +112,7 @@ public class Project1aService extends HttpServlet {
 		if (cookies != null) {
 			for (int i = 0; i < cookies.length; i++) {
 				Cookie cookie = cookies[i];
-				int sessionID =  Integer.valueOf(cookie.getValue().split("\\s+")[0]);
+				int sessionID =  Integer.valueOf(cookie.getValue().split("_")[0]);
 				//verify if cookie is valid
 				//check if there is a cookie returned and also if an entry exists in the sessionTable 
 				if (cookieName.equals(cookie.getName()) && sessionTable.containsKey(sessionID))
@@ -132,9 +134,9 @@ public class Project1aService extends HttpServlet {
 		if (cookie != null) {
 			String value = cookie.getValue();
 			if(value!= null) {
-				int sessionID =  Integer.valueOf(value.split("\\s+")[0]);
+				int sessionID =  Integer.valueOf(value.split("_")[0]);
 				if(sessionTable.containsKey(sessionID))
-				    return Integer.valueOf(value.split("\\s+")[0]);
+				    return sessionID;
 			}
 		}
 		return -1;
@@ -182,7 +184,7 @@ public class Project1aService extends HttpServlet {
 			int session = sessionID.incrementAndGet();
 			  
 			//Location metadata will be appropriately added when needed
-			String cookieValue = "" + session + " " + versionNo + " " + "location";
+			String cookieValue = "" + session + "_" + versionNo + "_" + "location";
 			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			sessionTable.put(session, value);
@@ -191,7 +193,7 @@ public class Project1aService extends HttpServlet {
 			int versionNo = (sessionTable.get(sessionID).getVersion())+1;
 			  
 			//Location metadata will be appropriately added when needed
-			String cookieValue = Integer.toString(sessionID) + " " + versionNo + " location";
+			String cookieValue = Integer.toString(sessionID) + "_" + versionNo + "_" + "location";
 			clientCookie.setValue(cookieValue);
 			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			sessionTable.replace(sessionID, value);
@@ -209,14 +211,16 @@ public class Project1aService extends HttpServlet {
 	 */
 	protected String generateMarkup(String startMessage, String hostname, int port) {
 		//Time Expiry is calculated at current + 10 minutes. 
-		Date date = new Date();
+		Date serverDate = new Date();
 		Calendar cal = Calendar.getInstance();
-		cal.setTime(date);
+		cal.setTime(serverDate);
 		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
-		date = cal.getTime();
-				
+		serverDate = cal.getTime(); //Date on server might be in different time zone
+		Date date = new Date(serverDate.getTime() + TimeZone.getTimeZone("EST").getRawOffset());
+		
 		SimpleDateFormat ft = new SimpleDateFormat(
-				"MMMMM dd, yyyy hh:mm:ss a zzz");	
+				"MMMMM dd, yyyy hh:mm:ss a ", Locale.US);
+		String time = ft.format(date);
 		
 		String markup = "<h2>"
 				+ startMessage
@@ -227,7 +231,7 @@ public class Project1aService extends HttpServlet {
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
 				+ "Session on " + hostname
 				+ ":" + port + "<br/><br/>" + "Expires "
-				+ ft.format(date);
+				+ time + " EST";
 		
 		return markup;
 	}
@@ -251,7 +255,7 @@ public class Project1aService extends HttpServlet {
 		//Give the user a cookie on first access to our service.
 		updateCookie(request, response, startMessage);
 		
-		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostName(), request.getLocalPort()));
+		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
 	}
 
 	/**
@@ -296,7 +300,7 @@ public class Project1aService extends HttpServlet {
 			//Update cookie for all further actions except Logout
 			updateCookie(request, response, startMessage);
 			
-			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostName(), request.getLocalPort()));
+			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort()));
 		}
 	}	
 		
