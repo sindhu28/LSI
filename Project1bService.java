@@ -254,39 +254,8 @@ public class Project1bService extends HttpServlet {
 		//Looks up for a valid entry in IPP_primary and IPP_backup
 		//It gets back values in response
 		
-		try {
-			DatagramSocket rpcSocket = new DatagramSocket();
-		} catch (SocketException e) {
-			return null;
-		}
+		//Call RPCClient
 		
-		Random rand = new Random(); 
-		int callID = rand.nextInt();
-		
-		
-		byte[] outBuf = new byte[512];
-		int length = SID.length();
-//		outBuf = ;
-//		  fill outBuf with [ callID, operationSESSIONREAD, sessionID, sessionVersionNum ]
-//		  for( each destAddr, destPort ) {
-//		    DatagramPacket sendPkt = new DatagramPacket(outBuf, length, destAddr, destPort)
-//		    rpcSocket.send(sendPkt);
-//		  }
-//		  byte [] inBuf = new byte[maxPacketSize];
-//		  DatagramPacket recvPkt = new DatagramPacket(inBuf, inBuf.length);
-//		  try {
-//		    do {
-//		      recvPkt.setLength(inBuf.length);
-//		      rpcSocket.receive(recvPkt);
-//		    } while( the callID in inBuf is not the expected one );
-//		  } catch(InterruptedIOException iioe) {
-//		    // timeout 
-//		    recvPkt = null;
-//		  } catch(IOException ioe) {
-//		    // other error 
-//		    ...
-//		  }
-//		  return recvPkt;
 		return null;
 	}
 
@@ -412,5 +381,23 @@ public class Project1bService extends HttpServlet {
 				}	    	
 		    }
 		}
+	}
+	
+	//
+	// SessionReadClient(sessionID, sessionVersionNum)
+	// with multiple [destAddr, destPort] pairs
+	//
+	public String SessionReadClient(int sessionID, int sessionVersionNum, 
+											InetAddress[] destAddrs, int[] destPorts) throws IOException {
+		//TODO fill outBuf with [callID, operationSESSIONREAD, sessionID, sessionVersionNum ]
+		String arguments = ""; //TODO: sessionID, sessionVersionNum
+		String result;
+		ClientRPC client = new ClientRPC(1, arguments); //TODO: give proper opcode
+		for(int i = 0; i < destAddrs.length; i++) {
+			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
+			client.sendPacket(destAddrs[i], destPorts[i]);			
+		}
+		result = client.receivePacket();
+		return result;
 	}
 }
