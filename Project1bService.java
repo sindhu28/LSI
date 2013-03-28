@@ -1,15 +1,21 @@
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Random;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.ServletException;
@@ -18,6 +24,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils.Collections;
 
 /**
  * Servlet implementation class HelloWorld
@@ -35,7 +43,8 @@ public class Project1bService extends HttpServlet {
 	private static AtomicInteger sessionID = new AtomicInteger();
 	private static ConcurrentHashMap<String, SessionTableValue> sessionTable = new ConcurrentHashMap<String, SessionTableValue>();
 	private Timer timer = new Timer();
-
+	private static ArrayList<String> ServerList = new ArrayList<String>();
+//    private static CopyOnWriteArrayList<String> ServerList = new CopyOnWriteArrayList();
 	/**
 	 * Inner class for Session Table 
 	 */
@@ -128,18 +137,35 @@ public class Project1bService extends HttpServlet {
 	 * @return String SID : Session ID
 	 */
 	private String getSessionID(HttpServletRequest request) {
-		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME); 
+		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
+		String SID;
 		if (cookie != null) {
 			String value = cookie.getValue();
 			if(value!= null) {
-				String SID = value.split("_")[0]+"_"+value.split("_")[1]+"_"+value.split("_")[2];
-				if(sessionTable.containsKey(SID))
+				String[] values = value.split("_");
+				SID = values[0]+"_"+values[1]+"_"+values[2];
+				int version = Integer.valueOf(values[3]);
+				//check if SID is in local session table AND if the local table has the most recent value
+				if(sessionTable.containsKey(SID) && version == sessionTable.get(SID).getVersion())
 				    return SID;
+				//check if SID is in other session tables AND if any of those session tables have the most recent value
+				String IPP_primary = values[4]+"_"+values[5];
+				String IPP_backup = values[6]+"_"+values[7];
+				SID = RPCSessionTableLookup(SID, IPP_primary, IPP_backup);
+				if(SID != "NULL")
+					return SID;
 			}
 		}
 		return null;
 	}
 	
+	private String CallRPC(String sID, String IPP) {
+		// TODO Auto-generated method stub
+		//Send RPC request to primary and backup servers in the server member set
+		//Receive response from all and return the first best fit
+		return null;
+	}
+
 	/**
 	 * Given a cookie sesionID, refer session table and return if cookie 
 	 * has expired (stale) or not.
@@ -177,29 +203,91 @@ public class Project1bService extends HttpServlet {
 	private void updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) {
 		Date date = new Date();
 		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
+		String SID;
+		SessionTableValue value;
+		String IPP_primary;
+		String IPP_backup;
+		
 		if (clientCookie == null) { //Create a new cookie for a new session if one does not exist 
-			String IPP = request.getLocalPort() + "_" +request.getLocalAddr();
+			IPP_primary = request.getLocalAddr() + "_" +request.getLocalPort();
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
-			String SID = ""+session+"_"+IPP;
+			SID = ""+session+"_"+IPP_primary;
 			//Location metadata will be appropriately added when needed
-			String cookieValue = SID + "_" + versionNo + "_" + "location";
+			value = new SessionTableValue(versionNo, startMessage, date);
+			IPP_backup = RPCSessionTableUpdate(SID, value);
+			sessionTable.put(SID, value);
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup + "location";
 			System.out.println("update cookie: "+cookieValue);
 			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
-			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
-			sessionTable.put(SID, value);
 		} else { // Update the existing cookie with new values
-			String SID = getSessionID(request);
-			int versionNo = (sessionTable.get(SID).getVersion())+1;
+			SID = getSessionID(request);
+			String values[] = clientCookie.getValue().split("_");
+			int versionNo = Integer.valueOf(values[3])+1;
+			value = new SessionTableValue(versionNo, startMessage, date);
 			//Location metadata will be appropriately added when needed
-			String cookieValue = SID + "_" + versionNo + "_" + "location";
+			IPP_primary = values[4];
+			IPP_backup = values[5];
+			if(ServerList.contains(IPP_primary) == false)
+			    ServerList.add(IPP_primary);
+			if(ServerList.contains(IPP_backup) == false)
+			    ServerList.add(IPP_backup);
+			IPP_backup = RPCSessionTableUpdate(SID, value);
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup + "location";
 			System.out.println("update cookie: "+cookieValue);
 			clientCookie.setValue(cookieValue);
-			SessionTableValue value = new SessionTableValue(versionNo, startMessage, date);
 			sessionTable.replace(SID, value);
 		}
 		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
 		response.addCookie(clientCookie);
+	}
+
+	private String RPCSessionTableUpdate(String sID, SessionTableValue value) {
+		return sID;
+		// TODO Auto-generated method stub
+		//Sends RPC to all servers in ServerList
+		//Returns the IPP of response from the first server
+	}
+	
+	private String RPCSessionTableLookup(String SID, String IPP_primary, String IPP_backup) {
+		// TODO Auto-generated method stub
+		//Looks up for a valid entry in IPP_primary and IPP_backup
+		//It gets back values in response
+		
+		try {
+			DatagramSocket rpcSocket = new DatagramSocket();
+		} catch (SocketException e) {
+			return null;
+		}
+		
+		Random rand = new Random(); 
+		int callID = rand.nextInt();
+		
+		
+		byte[] outBuf = new byte[512];
+		int length = SID.length();
+//		outBuf = ;
+//		  fill outBuf with [ callID, operationSESSIONREAD, sessionID, sessionVersionNum ]
+//		  for( each destAddr, destPort ) {
+//		    DatagramPacket sendPkt = new DatagramPacket(outBuf, length, destAddr, destPort)
+//		    rpcSocket.send(sendPkt);
+//		  }
+//		  byte [] inBuf = new byte[maxPacketSize];
+//		  DatagramPacket recvPkt = new DatagramPacket(inBuf, inBuf.length);
+//		  try {
+//		    do {
+//		      recvPkt.setLength(inBuf.length);
+//		      rpcSocket.receive(recvPkt);
+//		    } while( the callID in inBuf is not the expected one );
+//		  } catch(InterruptedIOException iioe) {
+//		    // timeout 
+//		    recvPkt = null;
+//		  } catch(IOException ioe) {
+//		    // other error 
+//		    ...
+//		  }
+//		  return recvPkt;
+		return null;
 	}
 
 	/**
