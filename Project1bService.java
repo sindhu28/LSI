@@ -375,7 +375,19 @@ public class Project1bService extends HttpServlet {
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
 			sessionTable.remove(SID);
-			out.println("<h2>"+END_MESSAGE+"</h2>");	
+			out.println("<h2>"+END_MESSAGE+"</h2>");
+			//TODO - aaron send RPC delete calls
+			
+			runSessionTableCleaner();
+		} else if (action.equals("Crash")) {
+			//TODO - aaron tell this RPC server to hang
+			// maybe by sending an rpc call to our server that says hang?
+			//TODO - aaron I'm worried that the servlet isn't a thread,
+			// maybe instead the servlet generates a new thread for every incoming call...
+			// in which case the below code won't work
+			for ( ; ; ) {
+				Thread.sleep(5000);
+			}
 		} else {
 			//Extract replace string and set to startMessage
 			if (action.equals("Replace")) {

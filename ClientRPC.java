@@ -20,6 +20,7 @@ public class ClientRPC {
 	DatagramPacket recvPkt;
 	
 	ClientRPC() throws SocketException {
+		//TODO Aaron: should this perhaps be private (as a kind of constructor helper)?
 		rpcSocket = new DatagramSocket(); 
 		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
@@ -30,6 +31,7 @@ public class ClientRPC {
 	
 	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts) throws SocketException {
 		String[] args = arguments.split("_");
+		//TODO Aaron: should this call the above ClientRPC() method?
 		
 		this.opcode =  Integer.valueOf(args[0]);
 		this.sessionID = args[1]+"_"+args[2]+"_"+args[3];
