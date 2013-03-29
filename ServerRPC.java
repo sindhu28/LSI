@@ -1,5 +1,3 @@
-package edu.cornell.cs5300.project1b;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,7 +10,7 @@ public class ServerRPC implements Runnable{
 	byte[] inBuf;     //arguments callid + arguments
 	
 	ServerRPC() throws SocketException {
-		rpcSocket = new DatagramSocket(51303);//TODO: HACK-port no. hardcoded. Remove.
+		rpcSocket = new DatagramSocket(51303);//TODO: HACK-port no. hardcoded
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		System.out.println("In ServerRPC");
@@ -52,10 +50,17 @@ public class ServerRPC implements Runnable{
 						continue;
 					} else {
 						outBuf = result.getBytes(); 
-						System.out.println(outBuf);
+						System.out.println("Session read: " + new String(outBuf));
 					}
 					break;
 				case Project1bService.SESSIONWRITE:
+					result = SessionBackup(arguments);
+					if(result == null) {
+						continue;
+					} else {
+						outBuf = result.getBytes();
+						System.out.println("Session write: " + new String(outBuf));
+					}
 					break;
 				default:
 					continue;
@@ -77,6 +82,12 @@ public class ServerRPC implements Runnable{
 				e.printStackTrace();
 			}
 		}
+	}
+
+	private String SessionBackup(String[] arguments) {
+		String IPP_backup = Project1bService.setSessionTableEntry(arguments[2], arguments[3]);
+		System.out.println("Session entry" + IPP_backup);
+		return IPP_backup;
 	}
 
 	private String SessionRead(String[] arguments) {

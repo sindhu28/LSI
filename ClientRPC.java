@@ -57,7 +57,6 @@ public class ClientRPC {
 			rpcSocket.close();
 			return null;
 		} catch(InterruptedIOException iioe) {
-				
 			//timeout
 			System.out.println("timeout");
 			recvPkt = null;
@@ -93,6 +92,24 @@ public class ClientRPC {
 		result = receivePacket();
 		return result;
 	}
+
+	private String SessionBackup() throws IOException {
+		for(int i = 0; i < destAddrs.length; i++){
+			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
+			//TODO: HACK
+			destAddrs[0] = InetAddress.getByName("192.168.1.9");
+			destPorts[0] = 51303;
+			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
+			if(destAddrs[i].equals( Project1bService.getIPP())){
+				//do nothing
+			}
+			else{
+			    sendPacket(destAddrs[i], destPorts[i]);
+			}
+		}
+		String result = receivePacket();
+		return result;
+	}
 	
 	public String run() {
 		if(this.opcode == Project1bService.SESSIONREAD){
@@ -106,6 +123,15 @@ public class ClientRPC {
 					return sessionTableValue;
 				else
 					return null;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				//e.printStackTrace();
+				System.out.println("rpc failed");
+			} 
+		} else if(this.opcode == Project1bService.SESSIONWRITE) {
+			try {
+				String IPP_backup = SessionBackup();
+				return IPP_backup;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();

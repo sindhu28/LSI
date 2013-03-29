@@ -38,17 +38,41 @@ public class Project1bService extends HttpServlet {
 	private static final int MAX_ENTRIES = 1000;
 	private static final int SCHEDULER_TIMEOUT = 600000; //10 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
-	private static ConcurrentHashMap<String, SessionTableValue> sessionTable = new ConcurrentHashMap<String, SessionTableValue>();
+	//TODO: HACK-public to print int serverRPC. Make it private later
+	public static ConcurrentHashMap<String, String> sessionTable = new ConcurrentHashMap<String, String>();
 	private Timer timer = new Timer();
-	private static ArrayList<String> ServerList = new ArrayList<String>();
+	private static ArrayList<String> memberSet = new ArrayList<String>();
 	private static int serverPort;
 	private static String IPP;
+	private static final String IPP_null = "0_0";
 	
 	//OPCODES FOR RPC 
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 512;
 	public static final int RPCTIMEOUT = 3000;
+	
+	public String getMessage(String value) {
+		if(value == null) {
+			return null;
+		}
+		return value.split("_")[1];
+	}
+	
+	public int getVersion(String value) {
+		if(value == null) {
+			return -1;
+		}
+		return Integer.valueOf(value.split("_")[0]);
+	}
+	
+	public String getDate(String value) {
+		if(value == null) {
+			return null;
+		}
+		return value.split("_")[2];
+	}
+	
 	
 	/**
 	 * Returns IPP of the server side
@@ -64,51 +88,10 @@ public class Project1bService extends HttpServlet {
 	 */
 	
 	public static String getSessionTableEntry(String sessionID) {
-		SessionTableValue value = sessionTable.get(sessionID);
-		if(value == null) {
-			return null;
-		}
-		String result = value.getVersion()+"_"+value.getMessage()+"_"+value.getDate();
+		String result = sessionTable.get(sessionID);
 		return result;
 	}
-	private class SessionTableValue {
-		//Class to hold data in Session Table
-		int version;
-		String message;
-		String date;
-	
-		SessionTableValue(int version, String message, String date) {
-			this.version = version;
-			this.message = message;
-			this.date = date;
-		}
-
-		public int getVersion() {
-			return version;
-		}
-
-		public void setVersion(int version) {
-			this.version = version;
-		}
-
-		public String getMessage() {
-			return message;
-		}
-
-		public void setMessage(String message) {
-			this.message = message;
-		}
-
-		public String getDate() {
-			return date;
-		}
-
-		public void setDate(String date) {
-			this.date = date;
-		}
 		
-	}
-	
 	/**
 	 * Inner class RunTimer to schedule the thread for session table cleaning. 
 	 */
@@ -135,7 +118,7 @@ public class Project1bService extends HttpServlet {
         RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
         ServerRPC server = new ServerRPC();
-        serverPort = server.serverPort;
+        serverPort = server.rpcSocket.getLocalPort();
         System.out.println("serverport: "+serverPort);
         new Thread(server).start();
 	}
@@ -258,21 +241,22 @@ public class Project1bService extends HttpServlet {
 		String time = ft.format(date);
 		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
 		String SID;
-		SessionTableValue value;
+		String value;
 		String IPP_primary;
 		String IPP_backup;
 		
-		if (clientCookie == null) { //Create a new cookie for a new session if one does not exist 
-			//IPP_primary = request.getLocalAddr() + "_" +serverPort;
-			//TODO: HACK
-			IPP_primary = request.getLocalAddr() + "_" +60517;
+		if (clientCookie == null) { 
+			//Create a new cookie for a new session if one does not exist 
+			IPP_primary = request.getLocalAddr() + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
-			//Location metadata will be appropriately added when needed
-			value = new SessionTableValue(versionNo, startMessage, time);
-			//IPP_backup = RPCSessionTableUpdate(SID, value);
-			IPP_backup = IPP_primary; //TODO: get proper backup IPP
+			value = versionNo +"_" + startMessage + "_" +time;
+			//TODO:IPP Backup
+			IPP_backup = RPCSessionTableUpdate(SID, value);
+			if (IPP_backup == null) {
+				IPP_backup = IPP_null;
+			}
 			sessionTable.put(SID, value);
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			System.out.println("update cookie: "+cookieValue);
@@ -282,16 +266,19 @@ public class Project1bService extends HttpServlet {
 			
 			String values[] = clientCookie.getValue().split("_");
 			int versionNo = Integer.valueOf(values[3])+1;
-			value = new SessionTableValue(versionNo, startMessage, time);
+			value = versionNo +"_" + startMessage + "_" +time;
 			
 			//Location metadata will be appropriately added when needed
 			IPP_primary = values[4];
 			IPP_backup = values[5];
-			if(ServerList.contains(IPP_primary) == false)
-			    ServerList.add(IPP_primary);
-			if(ServerList.contains(IPP_backup) == false)
-			    ServerList.add(IPP_backup);
+			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_primary) == false)
+				memberSet.add(IPP_primary);
+			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_backup) == false)
+				memberSet.add(IPP_backup);
 			IPP_backup = RPCSessionTableUpdate(SID, value);
+			if (IPP_backup == null) {
+				IPP_backup = IPP_null;
+			}
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			System.out.println("update cookie: "+cookieValue);
 			clientCookie.setValue(cookieValue);
@@ -301,11 +288,22 @@ public class Project1bService extends HttpServlet {
 		response.addCookie(clientCookie);
 	}
 
-	private String RPCSessionTableUpdate(String sID, SessionTableValue value) {
-		return sID;
+	private String RPCSessionTableUpdate(String SID, String value) throws UnknownHostException, SocketException {
 		// TODO Auto-generated method stub
 		//Sends RPC to all servers in ServerList
 		//Returns the IPP of response from the first server
+		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
+		int[] destPorts = new int[memberSet.size()];
+		int i=0;
+		for(String member: memberSet) {
+			String[] values = member.split("_");
+			destAddrs[i] = InetAddress.getByName(values[0]);
+			destPorts[i++] = Integer.valueOf(values[1]);
+		}
+		String arguments = SESSIONWRITE + SID + value.toString(); 
+		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
+		String result = client.run();
+		return result;
 	}
 	
 	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts) throws SocketException {
@@ -368,7 +366,7 @@ public class Project1bService extends HttpServlet {
 		IPP = request.getLocalAddr()+"_"+serverPort;
 		
 		if(SID != null) {
-			startMessage = sessionTable.get(SID).getMessage();
+			startMessage = getMessage(sessionTable.get(SID));
 		}
 		
 		//Give the user a cookie on first access to our service.
@@ -413,7 +411,7 @@ public class Project1bService extends HttpServlet {
 					if(!isCookieStale(sessionTableValue)) {
 						//Refresh the page with the same text retained only if cookie is valid
 						if(action.equals("Refresh")) {
-							startMessage = sessionTable.get(SID).getMessage();
+							startMessage = getMessage(sessionTable.get(SID));
 						}
 					} else { //Cookie is stale so remove entry from session table
 						sessionTable.remove(SID);
@@ -448,7 +446,7 @@ public class Project1bService extends HttpServlet {
 			while (it.hasNext()) {
 				//Remove all stale(expired) cookie entries from Session Table
 				String key = it.next();
-		    	Date oldDate = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US).parse(sessionTable.get(key).getDate());
+		    	Date oldDate = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US).parse(getDate(sessionTable.get(key)));
 		    	Timestamp oldTS = new Timestamp(oldDate.getTime());
 		    	long diffTS = currentTS.getTime() - oldTS.getTime();
 		    	if (diffTS >= EXPIRATION_PERIOD){
@@ -457,4 +455,13 @@ public class Project1bService extends HttpServlet {
 		    }
 		}
 	}
+
+	public static String setSessionTableEntry(String sessionID, String sessionValue) {
+		if(sessionID == null || sessionValue == null) {
+			return null;
+		}
+		sessionTable.put(sessionID, sessionValue);	
+		return IPP;
+	}
+	
 }
