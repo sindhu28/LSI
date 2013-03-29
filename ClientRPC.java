@@ -4,28 +4,39 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class ClientRPC {
 	DatagramSocket rpcSocket;
 	int serverPort;
-	byte[] outBuf;     //arguments = callID, opcode, sessionID = sessionNum+IPP, VersionNum
+	byte[] outBuf;     //arguments = opcode, sessionID = sessionNum+IPP, VersionNum
 	byte[] inBuf;
-	String opcode;
+	int opcode;
+	String sessionID;
+	int version;
+	InetAddress[] destAddrs;
+	int[] destPorts;
 	String callid;
 	DatagramPacket sendPkt;
 	DatagramPacket recvPkt;
-	private final int SESSIONREAD = 1000;
-	private final int maxPacketSize = 512;
 	
-	ClientRPC(int opcode, String arguments) throws SocketException {
+	ClientRPC() throws SocketException {
 		rpcSocket = new DatagramSocket(); 
 		serverPort = rpcSocket.getLocalPort();
-		inBuf = new byte[maxPacketSize];
+		inBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		this.callid = ""+(10000*serverPort);
-		this.opcode =  ""+opcode;
-		outBuf = (callid+"_"+this.opcode+"_"+arguments).getBytes();
+		
+	}
+	
+	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts) throws SocketException {
+		String[] args = arguments.split("_");
+		
+		this.opcode =  Integer.valueOf(args[0]);
+		this.sessionID = args[1]+"_"+args[2]+"_"+args[3];
+		this.version = Integer.valueOf(args[4]);
+		this.destAddrs = destAddrs;
+		this.destPorts = destPorts;
+		outBuf = (callid+"_"+arguments).getBytes();
 	}
 	
 	public void sendPacket(InetAddress addr, int destPort) throws IOException{
@@ -50,5 +61,36 @@ public class ClientRPC {
 		}
 		rpcSocket.close();
 		return inBuf.toString();
+	}
+	
+	//
+	// SessionReadClient(sessionID, sessionVersionNum)
+	// with multiple [destAddr, destPort] pairs
+	//
+	public String SessionReadClient() throws IOException {
+		String result;
+		for(int i = 0; i < destAddrs.length; i++) {
+			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
+			sendPacket(destAddrs[i], destPorts[i]);			
+		}
+		result = receivePacket();
+		return result;
+	}
+	
+	public String run() {
+		if(this.opcode == Project1bService.SESSIONREAD){
+			try {
+				String sessionTableValue = SessionReadClient();
+				int sessionTableVersion = Integer.valueOf(sessionTableValue.split("_")[0]);
+				if(version == sessionTableVersion)
+					return sessionTableValue;
+				else
+					return null;
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return null;
 	}
 }
