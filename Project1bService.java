@@ -41,14 +41,24 @@ public class Project1bService extends HttpServlet {
 	private static ConcurrentHashMap<String, SessionTableValue> sessionTable = new ConcurrentHashMap<String, SessionTableValue>();
 	private Timer timer = new Timer();
 	private static ArrayList<String> ServerList = new ArrayList<String>();
+	private static int serverPort;
+	private static String IPP;
 	
 	//OPCODES FOR RPC 
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 512;
+	public static final int RPCTIMEOUT = 3000;
 	
+	/**
+	 * Returns IPP of the server side
+	 * @throws UnknownHostException 
+	 */
 	
-//    private static CopyOnWriteArrayList<String> ServerList = new CopyOnWriteArrayList();
+	public static InetAddress getIPP() throws UnknownHostException{
+		return InetAddress.getByName(IPP.split("_")[0]);
+	}
+	
 	/**
 	 * Inner class for Session Table 
 	 */
@@ -124,7 +134,10 @@ public class Project1bService extends HttpServlet {
 		//Initialize and schedule timer for cleaner thread
         RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
-        new Thread(new ServerRPC());
+        ServerRPC server = new ServerRPC();
+        serverPort = server.serverPort;
+        System.out.println("serverport: "+serverPort);
+        new Thread(server).start();
 	}
 	
 	/**
@@ -161,7 +174,6 @@ public class Project1bService extends HttpServlet {
 	private String getSessionID(HttpServletRequest request) throws UnknownHostException, SocketException {
 		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
 		String SID;
-		String sessionValue;
 		if (cookie != null) {
 			String value = cookie.getValue();
 			if(value!= null) {
@@ -178,17 +190,19 @@ public class Project1bService extends HttpServlet {
 		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
 		String value =  cookie.getValue();
 		String sessionTableValue = null;
-		
 		if(value!= null) {
 			String[] values = value.split("_");
 			String SID = values[0]+"_"+values[1]+"_"+values[2];
 			int version = Integer.valueOf(values[3]);
+			
 			//check if SID is in local session table AND if the local table has the most recent value
-			if(sessionTable.containsKey(SID) && version == sessionTable.get(SID).getVersion()){
-			    sessionTableValue = getSessionTableEntry(SID);
-			}
-			else{
-			    InetAddress[] destAddrs = {InetAddress.getByName(values[4]),InetAddress.getByName(values[6])};
+			//TODO: HACK - Remove the commented if loop
+//			if(sessionTable.containsKey(SID) && version == sessionTable.get(SID).getVersion()){
+//			    sessionTableValue = getSessionTableEntry(SID);
+//			}
+//			else{
+			{
+				InetAddress[] destAddrs = {InetAddress.getByName(values[4]),InetAddress.getByName(values[6])};
 				int[] destPorts = {Integer.valueOf(values[5]), Integer.valueOf(values[7])};
 				sessionTableValue = RPCSessionTableLookup(SID, version, destAddrs, destPorts);
 			}
@@ -249,15 +263,18 @@ public class Project1bService extends HttpServlet {
 		String IPP_backup;
 		
 		if (clientCookie == null) { //Create a new cookie for a new session if one does not exist 
-			IPP_primary = request.getLocalAddr() + "_" +request.getLocalPort();
+			//IPP_primary = request.getLocalAddr() + "_" +serverPort;
+			//TODO: HACK
+			IPP_primary = request.getLocalAddr() + "_" +60517;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
 			//Location metadata will be appropriately added when needed
 			value = new SessionTableValue(versionNo, startMessage, time);
-			IPP_backup = RPCSessionTableUpdate(SID, value);
+			//IPP_backup = RPCSessionTableUpdate(SID, value);
+			IPP_backup = IPP_primary; //TODO: get proper backup IPP
 			sessionTable.put(SID, value);
-			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup + "location";
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			System.out.println("update cookie: "+cookieValue);
 			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 		} else { // Update the existing cookie with new values
@@ -275,7 +292,7 @@ public class Project1bService extends HttpServlet {
 			if(ServerList.contains(IPP_backup) == false)
 			    ServerList.add(IPP_backup);
 			IPP_backup = RPCSessionTableUpdate(SID, value);
-			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup + "location";
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			System.out.println("update cookie: "+cookieValue);
 			clientCookie.setValue(cookieValue);
 			sessionTable.replace(SID, value);
@@ -297,7 +314,8 @@ public class Project1bService extends HttpServlet {
 		//It gets back values in response
 		
 		//Call RPCClient
-		String arguments = "SESSIONREAD"+"_"+SID+"_"+version; //TODO:opcode
+		String arguments = ""+SESSIONREAD+"_"+SID+"_"+version; //TODO:opcode
+		//TODO: handle unknown opcode exception
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts); //TODO:opcode
 		String result = client.run();
 		return result;
@@ -347,6 +365,7 @@ public class Project1bService extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
 		String SID = getSessionID(request);
+		IPP = request.getLocalAddr()+"_"+serverPort;
 		
 		if(SID != null) {
 			startMessage = sessionTable.get(SID).getMessage();
@@ -367,7 +386,7 @@ public class Project1bService extends HttpServlet {
 		
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
-		System.out.println("do post - SID:"+SID);
+		//System.out.println("do post - SID:"+SID);
 		String startMessage = START_MESSAGE;
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
@@ -384,20 +403,26 @@ public class Project1bService extends HttpServlet {
 			
 			String sessionTableValue = getSessionValue(request);
 			//Handle valid and stale(expired) cookies 
-			try {
-				if(!isCookieStale(sessionTableValue)) {
-					//Refresh the page with the same text retained only if cookie is valid
-					if(action.equals("Refresh")) {
-						startMessage = sessionTable.get(SID).getMessage();
-					}
-				} else { //Cookie is stale so remove entry from session table
-					sessionTable.remove(SID);
-				}
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			if(sessionTableValue == null) {
+				sessionTable.remove(SID);
+				out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
+				return;
+			} else {
 			
+				try {
+					if(!isCookieStale(sessionTableValue)) {
+						//Refresh the page with the same text retained only if cookie is valid
+						if(action.equals("Refresh")) {
+							startMessage = sessionTable.get(SID).getMessage();
+						}
+					} else { //Cookie is stale so remove entry from session table
+						sessionTable.remove(SID);
+					}
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			//Validate startMessage
 			//Ensure the entered message is <= MAX_STRING_LENGTH(512 bytes)
 			if(startMessage.length() > MAX_STRING_LENGTH){
