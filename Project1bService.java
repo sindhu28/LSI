@@ -53,7 +53,7 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 100;
-	public static final int RPCTIMEOUT = 10000;
+	public static final int RPCTIMEOUT = 1500;
 		
 	public String getMessage(String value) {
 		if(value == null) {
@@ -84,6 +84,10 @@ public class Project1bService extends HttpServlet {
 	
 	public static InetAddress getIP() throws UnknownHostException{
 		return InetAddress.getByName(IPP.split("_")[0]);
+	}
+	
+	public static String getIPP(){
+		return IPP;
 	}
 	
 	public static InetAddress getIPNull() throws UnknownHostException{
@@ -242,7 +246,7 @@ public class Project1bService extends HttpServlet {
 	 * @throws UnknownHostException 
 	 * @throws UnsupportedEncodingException 
 	 */
-	private void updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) throws UnknownHostException, SocketException, UnsupportedEncodingException {
+	private String updateCookie(HttpServletRequest request, HttpServletResponse response, String startMessage) throws UnknownHostException, SocketException, UnsupportedEncodingException {
 		Date date = new Date();
 		SimpleDateFormat ft = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US);
 		String time = ft.format(date);
@@ -251,8 +255,7 @@ public class Project1bService extends HttpServlet {
 		String value;
 		String IPP_primary = IPP_null;
 		String IPP_backup = IPP_null;
-		
-		
+			
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
@@ -300,6 +303,7 @@ public class Project1bService extends HttpServlet {
 		}
 		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
 		response.addCookie(clientCookie);
+		return IPP_backup;
 	}
 
 	private String RPCSessionTableUpdate(String SID, String value) throws UnknownHostException, SocketException, UnsupportedEncodingException {
@@ -338,7 +342,7 @@ public class Project1bService extends HttpServlet {
 	 * @param port
 	 * @return markup
 	 */
-	protected String generateMarkup(String startMessage, String hostname, int port, String CookieIPP) {
+	protected String generateMarkup(String startMessage, String hostname, int port, String CookieIPP, String cookieBackup) {
 		//Time Expiry is calculated at current + 10 minutes. 
 		Date serverDate = new Date();
 		Calendar cal = Calendar.getInstance();
@@ -350,6 +354,10 @@ public class Project1bService extends HttpServlet {
 		SimpleDateFormat ft = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US);
 		String time = ft.format(date);
 		
+		String members = "";
+		for(int i=0; i<memberSet.size() ; i++)
+			members += memberSet.get(i) + "  ";
+		
 		String markup = "<h2>"
 				+ startMessage
 				+ "</h2>"
@@ -359,10 +367,12 @@ public class Project1bService extends HttpServlet {
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"crash\" /><br/><br/></form>"
 				+ "Session on " + hostname
-				+ "IPP of host " + IPP
-				+ "Found on IPP " + CookieIPP
-				+ ":" + port + "<br/><br/>" + "Expires "
-				+ time + " EST";
+				+ ":" + port + "<br/><br/>"
+				+ "Found on IPP: " + CookieIPP.split("_")[0] + "<br/><br/>"
+				+ "New IPP Primary: " + IPP + "<br/><br/>"
+				+ "New IPP Backup: " + cookieBackup + "<br/><br/>"
+				+ "Expires "+ time + " EST" + "<br/><br/>"
+		        + "Member Set: " + members;
 		
 		return markup;
 	}
@@ -385,9 +395,10 @@ public class Project1bService extends HttpServlet {
 		}
 		
 		//Give the user a cookie on first access to our service.
-		updateCookie(request, response, startMessage);
-		
-		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort(),"NONE"));
+		String cookieBackup = updateCookie(request, response, startMessage);
+		if(cookieBackup == IPP_null)
+			cookieBackup = "IPP_null";
+		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort(),"NONE", cookieBackup));
 	}
 
 	/**
@@ -402,6 +413,7 @@ public class Project1bService extends HttpServlet {
 		String startMessage = START_MESSAGE;
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
+		String CookieIPP = "NONE";
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
@@ -414,8 +426,32 @@ public class Project1bService extends HttpServlet {
 			if (action.equals("Replace")) {
 				startMessage = request.getParameter("replace_string");
 			}
+			Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
+			String value =  URLDecoder.decode(cookie.getValue(), "UTF-8").trim();
+			String[] values = value.split("_");
+			String primary = values[4]+"_"+values[5];
+			String backup = values[6]+"_"+values[7];
+			String cache = IPP;
 			
 			String sessionTableValue = getSessionValue(request);
+			if(sessionTableValue != null){
+			//tokens = sessionTableValue + IPP where it was found
+			String[] tokens = sessionTableValue.split("_");
+			CookieIPP = sessionTableValue.split("_")[tokens.length-1];
+			if(CookieIPP == cache)
+				CookieIPP = "cache";
+			else if(CookieIPP == primary)
+				CookieIPP = "IPP_Primary";
+			else if(CookieIPP == backup)
+				CookieIPP = "IPP_Backup";
+			else
+			    CookieIPP = "NONE";
+			sessionTableValue = "";
+			for(int i=0; i< tokens.length-2; i++)
+				sessionTableValue += tokens[i]+"_";
+			sessionTableValue += tokens[tokens.length-2];
+			}
+			
 			
 			//Handle valid and stale(expired) cookies 
 			if(sessionTableValue == null) {
@@ -447,9 +483,10 @@ public class Project1bService extends HttpServlet {
 			}
 			
 			//Update cookie for all further actions except Logout
-			updateCookie(request, response, startMessage);
-			
-			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), "NONE"));
+			String cookieBackup = updateCookie(request, response, startMessage);
+			if(cookieBackup == IPP_null)
+				cookieBackup = "IPP_null";
+			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), CookieIPP, cookieBackup));
 		}
 	}	
 		

@@ -88,7 +88,10 @@ public class ServerRPC implements Runnable{
 	private String SessionRead(String[] arguments) {
 		String sessionID = arguments[2] + "_" + arguments[3] + "_" + arguments[4];
 		String sessionEntry = Project1bService.getSessionTableEntry(sessionID);
-		return sessionEntry;
+		if(sessionEntry != null)
+		    return sessionEntry+"_"+Project1bService.getIPP();
+		else
+			return null;
 		
 	}
 }
