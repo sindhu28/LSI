@@ -1,4 +1,3 @@
-package edu.cornell.cs5300.project1b;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -21,20 +20,17 @@ public class ServerRPC implements Runnable{
 		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
-		System.out.println("In ServerRPC");
 	}
 	
 	public void run() {
 		String result;
 		System.out.println("RPC Thread started");
 		while(true) {
-			System.out.println("Session table--------");
+			//System.out.println("Session table--------");
 			System.out.println(Project1bService.sessionTable);
-			System.out.println("SessionTableend00-=----------");
+			//System.out.println("SessionTableend00-=----------");
 			byte[] inBuf = new byte[600];
 			try {
-				//System.out.println(rpcSocket.getLocalPort());
-				//System.out.println(rpcSocket.getLocalAddress());
 				rpcSocket.receive(recvPkt);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -58,7 +54,7 @@ public class ServerRPC implements Runnable{
 				case SESSIONREAD :
 					//Read session value from Session Table and populate into outBuf.
 					System.out.println("Session Read-----------");
-					System.out.println(arguments);
+					System.out.print(arguments);
 					System.out.println("================");
 					result = arguments[0] + "_" + SessionRead(arguments);
 					
@@ -111,7 +107,9 @@ public class ServerRPC implements Runnable{
 	}
 
 	private String SessionBackup(String[] arguments) {
-		String IPP_backup = Project1bService.setSessionTableEntry(arguments[2], arguments[3]);
+		String key = arguments[2]+"_"+arguments[3]+"_"+arguments[4];
+		String value = arguments[5]+"_"+arguments[6]+"_"+arguments[7];
+		String IPP_backup = Project1bService.setSessionTableEntry(key, value);
 		System.out.println("Session entry" + IPP_backup);
 		return IPP_backup;
 	}
