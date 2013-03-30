@@ -1,3 +1,4 @@
+package edu.cornell.cs5300.project1b;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -45,7 +46,6 @@ public class ClientRPC {
 		
 		rpcSocket = new DatagramSocket(); 
 		rpcSocket.setSoTimeout(Project1bService.RPCTIMEOUT);
-		
 		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
 		//outBuf = new byte[Project1bService.MAXPACKETSIZE];
@@ -108,9 +108,9 @@ public class ClientRPC {
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
 			//TODO: HACK
 			destAddrs[0] = InetAddress.getByName("192.168.1.2");
-			destPorts[0] = 51320;
-			System.out.println("destaddr: "+destAddrs[i]+"destPort: "+destPorts[i]);
-			if(destAddrs[i].equals( "/"+Project1bService.getIP()) || destAddrs[i].equals("/0.0.0.0") || destPorts[i]==0){
+			destPorts[0] = 51305;
+			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
+			if(destAddrs[i].equals( Project1bService.getIPP())){
 				//do nothing
 			}
 			else{
@@ -125,10 +125,10 @@ public class ClientRPC {
 		for(int i = 0; i < destAddrs.length; i++){
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
 			//TODO: HACK
-			destAddrs[0] = InetAddress.getByName("192.168.1.2");
-			destPorts[0] = 51320;
+			destAddrs[0] = InetAddress.getByName("192.168.1.9");
+			destPorts[0] = 51303;
 			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getIP())){
+			if(destAddrs[i].equals( Project1bService.getIPP())){
 				//do nothing
 			}
 			else{
@@ -140,17 +140,12 @@ public class ClientRPC {
 	}
 	
 	public String run() {
-<<<<<<< HEAD
 		System.out.println("opcode is : "+this.opcode.toString()+"----");
 		if(this.opcode == Project1bService.OPCODE.SESSIONREAD){
-=======
-		//System.out.println("opcode is : "+this.opcode+"----");
-		if(this.opcode == Project1bService.SESSIONREAD){
->>>>>>> Version10
 			try {
-				//System.out.println("before sessionReadClient");
+				System.out.println("before sessionReadClient");
 				String sessionTableValue = SessionReadClient();
-				//System.out.println("after sessionREADCLIENT");
+				System.out.println("after sessionREADCLIENT");
 				if(sessionTableValue == null) {
 					return null;
 				}
@@ -162,7 +157,7 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				//System.out.println("rpc failed");
+				System.out.println("rpc failed");
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {
 			try {
@@ -170,8 +165,8 @@ public class ClientRPC {
 				return IPP_backup;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
-				//System.out.println("rpc failed");
+				//e.printStackTrace();
+				System.out.println("rpc failed");
 			}
 		} else if(this.opcode == Project1bService.OPCODE.SESSIONDELETE) {
 			for (int i = 0; i < destAddrs.length; i++) {
