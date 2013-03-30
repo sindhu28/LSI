@@ -200,7 +200,7 @@ public class Project1bService extends HttpServlet {
 			//check if SID is in local session table AND if the local table has the most recent value
 			//TODO:HACK to work on local machine
 			if(SID != null && sessionTable.containsKey(SID) && version == Integer.valueOf(sessionTable.get(SID).split("_")[0])){
-			    sessionTableValue = getSessionTableEntry(SID);
+			    sessionTableValue = getSessionTableEntry(SID)+"_"+IPP;
 			}
 			else{
 				InetAddress[] destAddrs = {InetAddress.getByName(values[4]),InetAddress.getByName(values[6])};
