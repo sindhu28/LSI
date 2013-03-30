@@ -147,6 +147,9 @@ public class Project1bService extends HttpServlet {
 	
 	
 	protected void init(){
+		//TODO: Should we schedule a timmer to clean up or not
+//		 RunTimer runTimer = new RunTimer();
+//	     timer.schedule(runTimer, SCHEDULER_TIMEOUT);
 		memberSet.add("192.168.1.9_51310");
 		memberSet.add("192.168.204.1_51305");
 		RPCServer = new ServerRPC();
