@@ -1,5 +1,3 @@
-package edu.cornell.cs5300.project1b;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
@@ -64,6 +62,7 @@ public class ClientRPC {
 				if(data[0].equals(this.callid)) {
 					flag = false;
 					str = new String(recvPkt.getData());
+					System.out.println("str recieved: "+str);
 				}
 			} while(flag); //TODO while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
@@ -92,7 +91,6 @@ public class ClientRPC {
 		for(int i = 0; i < destAddrs.length; i++){
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
 			//TODO: HACK
-			String dAddr = ""+destAddrs[i];
 			System.out.println(destAddrs[i].equals(Project1bService.getIP())+" "+ destAddrs.equals(Project1bService.getIPNull()));
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
@@ -133,6 +131,16 @@ public class ClientRPC {
 				if(sessionTableValue == null) {
 					return null;
 				}
+//				String[] values = sessionTableValue.split("_");
+//				sessionTableValue="";
+//				for(int i=1;i<values.length-1;i++) {
+//					sessionTableValue += values[i]+"_";
+//				}
+//				sessionTableValue += values[values.length-1];
+				
+				int indexofcallid = sessionTableValue.indexOf("_");
+				sessionTableValue = sessionTableValue.substring(indexofcallid+1);
+				
 				int sessionTableVersion = Integer.valueOf(sessionTableValue.split("_")[0]);
 				if(version == sessionTableVersion)
 					return sessionTableValue;

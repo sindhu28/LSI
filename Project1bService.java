@@ -1,4 +1,3 @@
-package edu.cornell.cs5300.project1b;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -58,7 +57,7 @@ public class Project1bService extends HttpServlet {
 	public static final int MAXPACKETSIZE = 100;
 	public static final int RPCTIMEOUT = 30000;
 	
-	public static boolean flag = true;
+	public static String myIP = "192.168.1.5";
 	
 	public String getMessage(String value) {
 		if(value == null) {
@@ -127,8 +126,8 @@ public class Project1bService extends HttpServlet {
 	 */
 	public Project1bService() throws SocketException {
 		//Initialize and schedule timer for cleaner thread
+		//memberSet.add("192.168.204.1_51320");
 		memberSet.add("192.168.1.7_51310");
-		memberSet.add("192.168.1.5_51320");
 		RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
         ServerRPC server = new ServerRPC();
@@ -195,9 +194,10 @@ public class Project1bService extends HttpServlet {
 //		System.out.println("Cookie value:" + value+"adsfasdfasd" + "===================");
 //		System.out.println("Cookie VALUE ="+value+"========");
 		String sessionTableValue = null;
+		System.out.println("session table value in getsessionvalue() : "+sessionTableValue);
 		if(value!= null) {
 			String[] values = value.split("_");
-//			System.out.println(Arrays.toString(values));
+			System.out.println(Arrays.toString(values));
 			//System.out.println(values[5]);
 			//System.out.println(values[7]);
 			String SID = values[0]+"_"+values[1]+"_"+values[2];
@@ -275,7 +275,8 @@ public class Project1bService extends HttpServlet {
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
 //			System.out.println("Session start no cookie");
-			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
+//			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
+			IPP_primary = myIP + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
@@ -301,8 +302,8 @@ public class Project1bService extends HttpServlet {
 			value = versionNo +"_" + startMessage + "_" +time;
 			
 			//Location metadata will be appropriately added when needed
-			IPP_primary = values[4];
-			IPP_backup = values[5];
+//			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
+			IPP_primary = myIP + "_" +serverPort;
 			/*
 			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_primary) == false)
 				memberSet.add(IPP_primary);
@@ -405,7 +406,8 @@ public class Project1bService extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
 		String SID = getSessionID(request);
-		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
+//		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
+		IPP = myIP+"_"+serverPort;
 		
 		if(SID != null) {
 			startMessage = getMessage(sessionTable.get(SID));
@@ -414,7 +416,8 @@ public class Project1bService extends HttpServlet {
 		//Give the user a cookie on first access to our service.
 		updateCookie(request, response, startMessage);
 		
-		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
+//		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
+		out.println(generateMarkup(startMessage, myIP, request.getServerPort()));
 	}
 
 	/**
@@ -423,13 +426,7 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		System.out.println("after before cookie");
-		if(flag == true)
-		{
-			//updateCookie(request, response, "Hello User");
-			flag = false;
-		}
-		System.out.println("after update cookie");
+		
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
 		//System.out.println("do post - SID:"+SID);
@@ -483,7 +480,8 @@ public class Project1bService extends HttpServlet {
 			//Update cookie for all further actions except Logout
 			updateCookie(request, response, startMessage);
 			
-			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort()));
+//			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort()));
+			out.println(generateMarkup(startMessage, myIP, request.getLocalPort()));
 		}
 	}	
 		
