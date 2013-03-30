@@ -42,11 +42,39 @@ public class Project1bService extends HttpServlet {
 	private Timer timer = new Timer();
 	private static ArrayList<String> ServerList = new ArrayList<String>();
 	private static int serverPort;
+	private static ServerRPC RPCServer;
 	private static String IPP;
+	private static boolean crashed = false;
 	
 	//OPCODES FOR RPC 
-	public static final int SESSIONREAD = 1000;
-	public static final int SESSIONWRITE = 1001;
+	public static enum OPCODE{
+		SESSIONREAD (1000),
+		SESSIONWRITE (1001),
+		SESSIONDELETE (1002);
+		
+		public final int value;
+		
+		OPCODE(int value) {
+			this.value = value;
+		}
+		
+		public int value() {
+			return this.value;
+		}
+		
+		public static OPCODE lookup(int val) {
+			switch (val) {
+			case SESSIONREAD.value :
+				return SESSIONREAD;
+			case SESSIONWRITE.value :
+				return SESSIONWRITE;
+			case SESSIONDELETE.value :
+				return SESSIONDELETE;
+			}
+			
+			throw new IllegalArgumentException();
+		}
+	}
 	public static final int MAXPACKETSIZE = 512;
 	public static final int RPCTIMEOUT = 3000;
 	
@@ -62,7 +90,6 @@ public class Project1bService extends HttpServlet {
 	/**
 	 * Inner class for Session Table 
 	 */
-	
 	public static String getSessionTableEntry(String sessionID) {
 		SessionTableValue value = sessionTable.get(sessionID);
 		if(value == null) {
@@ -126,18 +153,21 @@ public class Project1bService extends HttpServlet {
 		   }
 	    }
 	
+	
+	protected void init(){
+		RPCServer = new ServerRPC();
+		serverPort = RPCServer.serverPort;
+		System.out.println("serverport: "+serverPort);
+		new Thread(RPCServer).start();
+	}
+	
 	/**
 	 * Default constructor.
 	 * @throws SocketException 
 	 */
 	public Project1bService() throws SocketException {
-		//Initialize and schedule timer for cleaner thread
-        RunTimer runTimer = new RunTimer();
-        timer.schedule(runTimer, SCHEDULER_TIMEOUT);
-        ServerRPC server = new ServerRPC();
-        serverPort = server.serverPort;
-        System.out.println("serverport: "+serverPort);
-        new Thread(server).start();
+		// shouldn't really do much, all static initialization should be done in init
+		super();
 	}
 	
 	/**
@@ -314,7 +344,7 @@ public class Project1bService extends HttpServlet {
 		//It gets back values in response
 		
 		//Call RPCClient
-		String arguments = ""+SESSIONREAD+"_"+SID+"_"+version; //TODO:opcode
+		String arguments = ""+OPCODE.SESSIONREAD.value+"_"+SID+"_"+version; //TODO:opcode
 		//TODO: handle unknown opcode exception
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts); //TODO:opcode
 		String result = client.run();
@@ -347,6 +377,7 @@ public class Project1bService extends HttpServlet {
 				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
+				+ "<input type=\"submit\" name=\"Action\" value=\"CrashServer\" /><br/><br/></form>"
 				+ "Session on " + hostname
 				+ ":" + port + "<br/><br/>" + "Expires "
 				+ time + " EST";
@@ -360,6 +391,7 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
+		if (crashed) return;
 		
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
@@ -383,6 +415,7 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
+		if (crashed) return;
 		
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
@@ -390,23 +423,37 @@ public class Project1bService extends HttpServlet {
 		String startMessage = START_MESSAGE;
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
+		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
+		String values[] = clientCookie.getValue().split("_");
+		int version = Integer.valueOf(values[3]);
+		String sessionID = getSessionID(HttpServletRequest);
+		String IPP_primary = values[4];
+		String IPP_backup = values[5];
+		String IPP_local = this.IPP;
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
+			//TODO Aaron: should we be removing SID without a cookie?
 			sessionTable.remove(SID);
 			out.println("<h2>"+END_MESSAGE+"</h2>");
-			//TODO - aaron send RPC delete calls
-			
-			runSessionTableCleaner();
-		} else if (action.equals("Crash")) {
-			//TODO - aaron tell this RPC server to hang
-			// maybe by sending an rpc call to our server that says hang?
-			//TODO - aaron I'm worried that the servlet isn't a thread,
-			// maybe instead the servlet generates a new thread for every incoming call...
-			// in which case the below code won't work
-			for ( ; ; ) {
-				Thread.sleep(5000);
+			if (clientCookie != null) {
+				OPCODE opcode = OPCODE.SESSIONDELETE;
+				//TODO Aaron: I should clean this up
+				//TODO Aaron: also maybe find a better way to delete at this server
+				String args = ClientRPC.makeArgument(opcode, sessionID, version);
+				InetAddress[] destAddrs = {InetAddress.getByName(values[4]),
+						InetAddress.getByName(values[6]),
+						getIPP()};
+				int[] destPorts = {Integer.valueOf(values[5]), 
+						Integer.valueOf(values[7]), 
+						Integer.valueOf(IPP.split("_")[1])};;
+				ClientRPC deletecall = new ClientRPC(args, destAddrs, destPorts);
+				deletecall.run();
 			}
+			runSessionTableCleaner();
+		} else if (action.equals("CrashServer")) {
+			RPCServer.crashed = true;
+			crashed = true;
 		} else {
 			//Extract replace string and set to startMessage
 			if (action.equals("Replace")) {

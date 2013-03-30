@@ -6,12 +6,14 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
+
+
 public class ClientRPC {
 	DatagramSocket rpcSocket;
 	int serverPort;
 	byte[] outBuf;     //arguments = opcode, sessionID = sessionNum+IPP, VersionNum
 	byte[] inBuf;
-	int opcode;
+	Project1bService.OPCODE opcode;
 	String sessionID;
 	int version;
 	InetAddress[] destAddrs;
@@ -19,6 +21,19 @@ public class ClientRPC {
 	String callid;
 	DatagramPacket sendPkt;
 	DatagramPacket recvPkt;
+	
+	public static String makeArgument(Project1bService.OPCODE opcode, String sessionID, int version) {
+		return ""+opcode.value+"_"+sessionID+"_"+version;
+	}
+	
+	public static String makeArgument(Project1bService.OPCODE opcode, String sessionNum, String IPP, int version) {
+		return makeArgument(opcode, sessionNum+"_"+IPP, version);
+	}
+	
+	public static String makeArgument(Project1bService.OPCODE opcode, String sessionNum, String IP, String port,
+			int version) {
+		return makeArgument(opcode, sessionNum, IP+"_"+port, version);
+	}
 	
 
 	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts) throws SocketException {
@@ -31,7 +46,7 @@ public class ClientRPC {
 		outBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		callid = ""+(10000*serverPort);
-		this.opcode =  Integer.valueOf(args[0]);
+		this.opcode =  Project1bService.OPCODE.lookup(Integer.valueOf(args[0]));
 		this.sessionID = args[1]+"_"+args[2]+"_"+args[3];
 		this.version = Integer.valueOf(args[4]);
 		this.destAddrs = destAddrs;
@@ -41,13 +56,13 @@ public class ClientRPC {
 		System.out.println(s);
 	}
 	
-	public void sendPacket(InetAddress addr, int destPort) throws IOException{
+	private void sendPacket(InetAddress addr, int destPort) throws IOException{
 		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, addr, destPort);
 		System.out.println(sendPkt.getPort());
 		rpcSocket.send(sendPkt);
 	}
 	
-	public String receivePacket(){
+	private String receivePacket(){
 		try {
 			//do {
 				recvPkt.setLength(inBuf.length);
@@ -77,7 +92,7 @@ public class ClientRPC {
 	// SessionReadClient(sessionID, sessionVersionNum)
 	// with multiple [destAddr, destPort] pairs
 	//
-	public String SessionReadClient() throws IOException {
+	private String SessionReadClient() throws IOException {
 		String result;
 		for(int i = 0; i < destAddrs.length; i++){
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
@@ -97,7 +112,7 @@ public class ClientRPC {
 	}
 	
 	public String run() {
-		if(this.opcode == Project1bService.SESSIONREAD){
+		if(this.opcode == Project1bService.OPCODE.SESSIONREAD){
 			try {
 				String sessionTableValue = SessionReadClient();
 				if(sessionTableValue == null) {
@@ -112,6 +127,15 @@ public class ClientRPC {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
 				System.out.println("rpc failed");
+			}
+		} else if(this.opcode == Project1bService.OPCODE.SESSIONDELETE) {
+			for (int i = 0; i < destAddrs.length; i++) {
+				try {
+					sendPacket(destAddrs[i], destPorts[i]);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		}
 		return null;

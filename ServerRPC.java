@@ -7,12 +7,17 @@ import java.net.InetAddress;
 import java.net.SocketException;
 
 public class ServerRPC implements Runnable{
+	public static boolean crashed = false; 
+	//TODO Aaron: above is technically kind of hacky... Maybe fix
+	// we could send an RPC call to our server instead.
 	DatagramSocket rpcSocket;
 	DatagramPacket recvPkt;
 	byte[] inBuf;     //arguments callid + arguments
+	public int serverPort;
 	
 	ServerRPC() throws SocketException {
-		rpcSocket = new DatagramSocket(51303);//TODO: HACK-port no. hardcoded. Remove.
+		rpcSocket = new DatagramSocket();
+		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		System.out.println("In ServerRPC");
@@ -31,6 +36,7 @@ public class ServerRPC implements Runnable{
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			if (crashed) return;
 			//obtain opcode
 			String[] arguments = new String(recvPkt.getData()).split("_");
 			String s = new String(inBuf);
@@ -39,11 +45,11 @@ public class ServerRPC implements Runnable{
 			for(String si :arguments) {
 				System.out.println(si);
 			}
-		    int opcode = Integer.valueOf(arguments[1]);
+		    Project1bService.OPCODE opcode = Project1bService.OPCODE.lookup(Integer.valueOf(arguments[1]));
 		    byte[] outBuf = null;
 			
 		    switch (opcode) {
-				case Project1bService.SESSIONREAD :
+				case SESSIONREAD :
 					//Read session value from Session Table and populate into outBuf.
 					System.out.println(arguments);
 					String result = SessionRead(arguments);
@@ -55,10 +61,10 @@ public class ServerRPC implements Runnable{
 						System.out.println(outBuf);
 					}
 					break;
-				case Project1bService.SESSIONWRITE:
+				case SESSIONWRITE:
 					break;
 				default:
-					continue;
+					continue; //TODO Aaron: I am wary of defaults...
 		    }
 		
 		    //call specific function
