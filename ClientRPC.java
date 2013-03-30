@@ -159,7 +159,7 @@ public class ClientRPC {
 				e.printStackTrace();
 				System.out.println("rpc failed");
 			} 
-		} else if(this.opcode == Project1bService.SESSIONWRITE) {
+		} else if(this.opcode == Project1bService.OPCODE.SESSIONWRITE) {
 			try {
 				String IPP_backup = SessionBackup();
 				return IPP_backup;
