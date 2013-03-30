@@ -1,3 +1,5 @@
+package edu.cornell.cs5300.project1b;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -85,8 +87,12 @@ public class Project1bService extends HttpServlet {
 	 * @throws UnknownHostException 
 	 */
 	
-	public static InetAddress getIPP() throws UnknownHostException{
+	public static InetAddress getIP() throws UnknownHostException{
 		return InetAddress.getByName(IPP.split("_")[0]);
+	}
+	
+	public static InetAddress getIPNull() throws UnknownHostException{
+		return InetAddress.getByName("0.0.0.0");
 	}
 	
 	/**
@@ -122,8 +128,8 @@ public class Project1bService extends HttpServlet {
 	public Project1bService() throws SocketException {
 		//Initialize and schedule timer for cleaner thread
 		memberSet.add("192.168.1.7_51310");
-		memberSet.add("192.168.204.1_51320");
-        RunTimer runTimer = new RunTimer();
+		memberSet.add("192.168.1.5_51320");
+		RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
         ServerRPC server = new ServerRPC();
         serverPort = server.rpcSocket.getLocalPort();
@@ -332,7 +338,9 @@ public class Project1bService extends HttpServlet {
 		for(String member: memberSet) {
 			String[] values = member.split("_");
 			destAddrs[i] = InetAddress.getByName(values[0]);
-			destPorts[i++] = Integer.valueOf(values[1]);
+			destPorts[i] = Integer.valueOf(values[1]);
+			System.out.println("dest addr in memberset: "+destAddrs[i]+" "+destPorts[i]);
+			i++;
 		}
 		String arguments = SESSIONWRITE +"_" + SID +"_" + value.toString(); 
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
@@ -404,7 +412,8 @@ public class Project1bService extends HttpServlet {
 		}
 		
 		//Give the user a cookie on first access to our service.
-				
+		updateCookie(request, response, startMessage);
+		
 		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
 	}
 
@@ -417,7 +426,7 @@ public class Project1bService extends HttpServlet {
 		System.out.println("after before cookie");
 		if(flag == true)
 		{
-			updateCookie(request, response, "Hello User");
+			//updateCookie(request, response, "Hello User");
 			flag = false;
 		}
 		System.out.println("after update cookie");
@@ -430,7 +439,9 @@ public class Project1bService extends HttpServlet {
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
-			sessionTable.remove(SID);
+			if(SID!=null && sessionTable.contains(SID)) {
+				    sessionTable.remove(SID);
+			}
 			out.println("<h2>"+END_MESSAGE+"</h2>");	
 		} else {
 			//Extract replace string and set to startMessage
@@ -439,9 +450,11 @@ public class Project1bService extends HttpServlet {
 			}
 			
 			String sessionTableValue = getSessionValue(request);
+			System.out.println("sessiontaablevalue"+sessionTableValue);
+			System.out.println("sessiontablecontains:"+SID);
 			//Handle valid and stale(expired) cookies 
 			if(sessionTableValue == null) {
-				if(sessionTable.contains(SID))
+				if(SID!=null && sessionTable.contains(SID))
 				    sessionTable.remove(SID);
 				out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
 				return;

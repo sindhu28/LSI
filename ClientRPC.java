@@ -1,3 +1,5 @@
+package edu.cornell.cs5300.project1b;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
@@ -39,9 +41,15 @@ public class ClientRPC {
 		String s = new String(outBuf);
 	}
 	
-	public void sendPacket(InetAddress addr, int destPort) throws IOException{
+	public void sendPacket(InetAddress addr, int destPort){
 		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, addr, destPort);
-		rpcSocket.send(sendPkt);
+		try {
+			System.out.println("Sending to: "+addr);
+			System.out.println(destPort);
+			rpcSocket.send(sendPkt);
+		} catch(IOException e) {
+			System.out.println(e.getMessage());
+		}
 	}
 	
 	public String receivePacket(){
@@ -84,11 +92,11 @@ public class ClientRPC {
 		for(int i = 0; i < destAddrs.length; i++){
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
 			//TODO: HACK
-			destAddrs[0] = InetAddress.getByName("192.168.1.7");
-			destPorts[0] = 51310;
-			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals("/"+Project1bService.getIPP()) || destAddrs[i].equals("/0.0.0.0")){
+			String dAddr = ""+destAddrs[i];
+			System.out.println(destAddrs[i].equals(Project1bService.getIP())+" "+ destAddrs.equals(Project1bService.getIPNull()));
+			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
+				System.out.println("not sent to ip.");
 			}
 			else{
 			    sendPacket(destAddrs[i], destPorts[i]);
@@ -102,11 +110,10 @@ public class ClientRPC {
 		for(int i = 0; i < destAddrs.length; i++){
 			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
 			//TODO: HACK
-			destAddrs[0] = InetAddress.getByName("192.168.1.7");
-			destPorts[0] = 51310;
-			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getIPP())){
+			System.out.println(destAddrs[i].equals(Project1bService.getIP())+" "+ destAddrs.equals(Project1bService.getIPNull()));
+			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
+				System.out.println("not sent to ip");
 			}
 			else{
 			    sendPacket(destAddrs[i], destPorts[i]);
@@ -138,6 +145,7 @@ public class ClientRPC {
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {
 			try {
+				System.out.println("In sessionWrite: opcode" +this.opcode);
 				String IPP_backup = SessionBackup();
 				return IPP_backup;
 			} catch (IOException e) {
