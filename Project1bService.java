@@ -1,10 +1,10 @@
-package edu.cornell.cs5300.project1b;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.sql.Timestamp;
 import java.text.ParseException;
@@ -47,46 +47,16 @@ public class Project1bService extends HttpServlet {
 	private Timer timer = new Timer();
 	private static ArrayList<String> memberSet = new ArrayList<String>();
 	private static int serverPort;
-	private static ServerRPC RPCServer;
 	private static String IPP;
-	private static boolean crashed = false;
+	private static final String IPP_null = "dummy_0_0";
 	
 	//OPCODES FOR RPC 
-	public static enum OPCODE{
-		SESSIONREAD (1000),
-		SESSIONWRITE (1001),
-		SESSIONDELETE (1002);
-		
-		public final int value;
-		
-		OPCODE(int value) {
-			this.value = value;
-		}
-		
-		public int value() {
-			return this.value;
-		}
-		
-		public static OPCODE lookup(int val) {
-			switch (val) {
-			case 1000 :
-				return SESSIONREAD;
-			case 1001 :
-				return SESSIONWRITE;
-			case 1002 :
-				return SESSIONDELETE;
-			}
-			
-			throw new IllegalArgumentException();
-		}
-	}
-
-
-	private static final String IPP_null = "0_0";
-	
-	//RPC constants
+	public static final int SESSIONREAD = 1000;
+	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 100;
 	public static final int RPCTIMEOUT = 30000;
+	
+	public static boolean flag = true;
 	
 	public String getMessage(String value) {
 		if(value == null) {
@@ -109,7 +79,6 @@ public class Project1bService extends HttpServlet {
 		return value.split("_")[2];
 	}
 	
-
 	
 	/**
 	 * Returns IPP of the server side
@@ -123,6 +92,7 @@ public class Project1bService extends HttpServlet {
 	/**
 	 * Inner class for Session Table 
 	 */
+	
 	public static String getSessionTableEntry(String sessionID) {
 		String result = sessionTable.get(sessionID);
 		return result;
@@ -145,31 +115,20 @@ public class Project1bService extends HttpServlet {
 		   }
 	    }
 	
-	
-	public void init(){
-		//TODO: Should we schedule a timmer to clean up or not
-//		 RunTimer runTimer = new RunTimer();
-//	     timer.schedule(runTimer, SCHEDULER_TIMEOUT);
-		memberSet.add("192.168.1.9_51310");
-		memberSet.add("192.168.204.1_51305");
-		try {
-			RPCServer = new ServerRPC();
-		} catch (SocketException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		serverPort = RPCServer.serverPort;
-		System.out.println("serverport: "+serverPort);
-		new Thread(RPCServer).start();
-	}
-	
 	/**
 	 * Default constructor.
 	 * @throws SocketException 
 	 */
 	public Project1bService() throws SocketException {
-		// shouldn't really do much, all static initialization should be done in init
-		super();		
+		//Initialize and schedule timer for cleaner thread
+		memberSet.add("192.168.1.7_51310");
+		memberSet.add("192.168.204.1_51320");
+        RunTimer runTimer = new RunTimer();
+        timer.schedule(runTimer, SCHEDULER_TIMEOUT);
+        ServerRPC server = new ServerRPC();
+        serverPort = server.rpcSocket.getLocalPort();
+//        System.out.println("serverport: "+serverPort);
+        new Thread(server).start();
 	}
 	
 	/**
@@ -178,12 +137,13 @@ public class Project1bService extends HttpServlet {
 	 * @param cookies
 	 * @param cookieName
 	 * @return Cookie
+	 * @throws UnsupportedEncodingException 
 	 */
-	private Cookie getCookie(Cookie[] cookies, String cookieName){
+	private Cookie getCookie(Cookie[] cookies, String cookieName) throws UnsupportedEncodingException{
 		if (cookies != null) {
 			for (int i = 0; i < cookies.length; i++) {
 				Cookie cookie = cookies[i];
-				String value = cookie.getValue();
+				String value = URLDecoder.decode(cookie.getValue(), "UTF-8");
 				String SID = value.split("_")[0]+"_"+value.split("_")[1]+"_"+value.split("_")[2];
 				//verify if cookie is valid
 				//check if there is a cookie returned and also if an entry exists in the sessionTable 
@@ -202,16 +162,17 @@ public class Project1bService extends HttpServlet {
 	 * @return String SID : Session ID
 	 * @throws UnknownHostException 
 	 * @throws SocketException 
+	 * @throws UnsupportedEncodingException 
 	 */
-	private String getSessionID(HttpServletRequest request) throws UnknownHostException, SocketException {
+	private String getSessionID(HttpServletRequest request) throws UnknownHostException, SocketException, UnsupportedEncodingException {
 		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
 		String SID;
 		if (cookie != null) {
-			String value = cookie.getValue();
+			String value = URLDecoder.decode(cookie.getValue(), "UTF-8");
 			if(value!= null) {
 				String[] values = value.split("_");
 				SID = values[0]+"_"+values[1]+"_"+values[2];
-				System.out.println("\n\nSID="+SID+"\n\n");
+//				System.out.println("\n\nSID="+SID+"\n\n");
 				return SID;
 			}
 		}
@@ -221,19 +182,21 @@ public class Project1bService extends HttpServlet {
 	private String getSessionValue(HttpServletRequest request) throws UnknownHostException, SocketException, UnsupportedEncodingException{
 		//check if SID is in other session tables AND if any of those session tables have the most recent value
 		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
-		String value =  cookie.getValue().trim();
+		if(cookie == null)
+			 return null;
+		String value =  URLDecoder.decode(cookie.getValue(), "UTF-8").trim();
 		System.out.println("======="+cookie.getValue()+"==========");
-		System.out.println("Cookie value:" + value+"adsfasdfasd" + "===================");
-		System.out.println("Cookie VALUE ="+value+"========");
+//		System.out.println("Cookie value:" + value+"adsfasdfasd" + "===================");
+//		System.out.println("Cookie VALUE ="+value+"========");
 		String sessionTableValue = null;
 		if(value!= null) {
 			String[] values = value.split("_");
-			//System.out.println(Arrays.toString(values));
+//			System.out.println(Arrays.toString(values));
 			//System.out.println(values[5]);
 			//System.out.println(values[7]);
 			String SID = values[0]+"_"+values[1]+"_"+values[2];
 			int version = Integer.valueOf(values[3]);
-			
+			System.out.println("SID,version:"+SID+" "+version);
 			//check if SID is in local session table AND if the local table has the most recent value
 			//TODO: HACK - Remove the commented if loop
 //			if(sessionTable.containsKey(SID) && version == sessionTable.get(SID).getVersion()){
@@ -302,9 +265,10 @@ public class Project1bService extends HttpServlet {
 		String IPP_primary;
 		String IPP_backup;
 		
+		
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
-			System.out.println("Session start no cookie");
+//			System.out.println("Session start no cookie");
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
@@ -312,18 +276,21 @@ public class Project1bService extends HttpServlet {
 			value = ""+versionNo +"_" + startMessage + "_" +time;
 			//TODO:IPP Backup
 			IPP_backup = RPCSessionTableUpdate(SID, value);
+//			System.out.println("update cookie IPP_primary: "+IPP_primary);
+//			System.out.println("update cookie IPP_backup: "+IPP_backup);
 			if (IPP_backup == null) {
 				IPP_backup = IPP_null;
 			}
-			System.out.println("noo cookie"+SID+"///Value////"+value);
+			IPP_backup =  IPP_backup.split("_")[1]+"_"+IPP_backup.split("_")[2];
+			System.out.println("IPP backup:"+IPP_backup);
 			sessionTable.put(SID, value);
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
-			//System.out.println("update cookie: "+cookieValue + "----------------------------");
-			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
+			System.out.println("update cookie: "+cookieValue);
+			clientCookie = new Cookie(COOKIE_NAME, URLEncoder.encode(cookieValue, "UTF-8"));
+//			clientCookie = new Cookie(COOKIE_NAME, cookieValue);
 		} else { // Update the existing cookie with new values
 			SID = getSessionID(request);
-			
-			String values[] = clientCookie.getValue().split("_");
+			String values[] = URLDecoder.decode(clientCookie.getValue(), "UTF-8").split("_");
 			int versionNo = Integer.valueOf(values[3])+1;
 			value = versionNo +"_" + startMessage + "_" +time;
 			
@@ -340,10 +307,16 @@ public class Project1bService extends HttpServlet {
 			if (IPP_backup == null) {
 				IPP_backup = IPP_null;
 			}
+			IPP_backup =  IPP_backup.split("_")[1]+"_"+IPP_backup.split("_")[2];
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
-			//System.out.println("update cookie: "+cookieValue);
-			clientCookie.setValue(cookieValue);
-			sessionTable.replace(SID, value);
+//			System.out.println("update cookie IPP_primary: "+IPP_primary);
+//			System.out.println("update cookie IPP_backup: "+IPP_backup);
+			System.out.println("update cookie: "+cookieValue);
+			clientCookie.setValue(URLEncoder.encode(cookieValue, "UTF-8"));
+			if(sessionTable.contains(SID))
+			    sessionTable.replace(SID, value);
+			else
+				sessionTable.put(SID, value);
 		}
 		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
 		response.addCookie(clientCookie);
@@ -361,7 +334,7 @@ public class Project1bService extends HttpServlet {
 			destAddrs[i] = InetAddress.getByName(values[0]);
 			destPorts[i++] = Integer.valueOf(values[1]);
 		}
-		String arguments = OPCODE.SESSIONWRITE +"_" + SID +"_" + value.toString(); 
+		String arguments = SESSIONWRITE +"_" + SID +"_" + value.toString(); 
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
 		String result = client.run();
 		return result;
@@ -373,7 +346,7 @@ public class Project1bService extends HttpServlet {
 		//It gets back values in response
 		
 		//Call RPCClient
-		String arguments = ""+OPCODE.SESSIONREAD.value+"_"+SID+"_"+version; //TODO:opcode
+		String arguments = ""+SESSIONREAD+"_"+SID+"_"+version; //TODO:opcode
 		//TODO: handle unknown opcode exception
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts); //TODO:opcode
 		String result = client.run();
@@ -406,7 +379,6 @@ public class Project1bService extends HttpServlet {
 				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
-				+ "<input type=\"submit\" name=\"Action\" value=\"CrashServer\" /><br/><br/></form>"
 				+ "Session on " + hostname
 				+ ":" + port + "<br/><br/>" + "Expires "
 				+ time + " EST";
@@ -420,7 +392,6 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		if (crashed) return;
 		
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
@@ -433,8 +404,7 @@ public class Project1bService extends HttpServlet {
 		}
 		
 		//Give the user a cookie on first access to our service.
-		updateCookie(request, response, startMessage);
-		
+				
 		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
 	}
 
@@ -444,50 +414,24 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		if (crashed) return;
-		
+		System.out.println("after before cookie");
+		if(flag == true)
+		{
+			updateCookie(request, response, "Hello User");
+			flag = false;
+		}
+		System.out.println("after update cookie");
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
 		//System.out.println("do post - SID:"+SID);
 		String startMessage = START_MESSAGE;
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
-		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
-		String values[] = clientCookie.getValue().split("_");
-		int version = Integer.valueOf(values[3]);
-		String sessionID = getSessionID(request);
-		String IPP_primary = values[4];
-		String IPP_backup = values[5];
-		String IPP_local = this.IPP;
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
-			//TODO Aaron: should we be removing SID without a cookie?
 			sessionTable.remove(SID);
-			out.println("<h2>"+END_MESSAGE+"</h2>");
-			if (clientCookie != null) {
-				OPCODE opcode = OPCODE.SESSIONDELETE;
-				//TODO Aaron: I should clean this up
-				//TODO Aaron: also maybe find a better way to delete at this server
-				String args = ClientRPC.makeArgument(opcode, sessionID, version);
-				InetAddress[] destAddrs = {InetAddress.getByName(values[4]),
-						InetAddress.getByName(values[6]),
-						getIPP()};
-				int[] destPorts = {Integer.valueOf(values[5]), 
-						Integer.valueOf(values[7]), 
-						Integer.valueOf(IPP.split("_")[1])};;
-				ClientRPC deletecall = new ClientRPC(args, destAddrs, destPorts);
-				deletecall.run();
-			}
-			try {
-				runSessionTableCleaner();
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		} else if (action.equals("CrashServer")) {
-			RPCServer.crashed = true;
-			crashed = true;
+			out.println("<h2>"+END_MESSAGE+"</h2>");	
 		} else {
 			//Extract replace string and set to startMessage
 			if (action.equals("Replace")) {
@@ -497,7 +441,8 @@ public class Project1bService extends HttpServlet {
 			String sessionTableValue = getSessionValue(request);
 			//Handle valid and stale(expired) cookies 
 			if(sessionTableValue == null) {
-				sessionTable.remove(SID);
+				if(sessionTable.contains(SID))
+				    sessionTable.remove(SID);
 				out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
 				return;
 			} else {
@@ -556,6 +501,7 @@ public class Project1bService extends HttpServlet {
 			return null;
 		}
 		sessionTable.put(sessionID, sessionValue);	
+//		System.out.println("IPP:"+IPP);
 		return IPP;
 	}
 	
