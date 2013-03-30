@@ -35,6 +35,7 @@ public class ClientRPC {
 		this.destAddrs = destAddrs;
 		this.destPorts = destPorts;
 		outBuf = (this.callid+"_"+arguments).getBytes("UTF-8");
+		String s = new String(outBuf);
 	}
 	
 	public void sendPacket(InetAddress addr, int destPort){
@@ -126,16 +127,17 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-//				System.out.println("RPC failed");
+//				System.out.println("rpc failed");
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {
 			try {
+//				System.out.println("In sessionWrite: opcode" +this.opcode);
 				String IPP_backup = SessionBackup();
 				return IPP_backup;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
-//				System.out.println("RPC failed");
+//				System.out.println("rpc failed");
 			}
 		}
 		return null;

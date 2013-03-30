@@ -53,7 +53,7 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 100;
-	public static final int RPCTIMEOUT = 30000;
+	public static final int RPCTIMEOUT = 10000;
 		
 	public String getMessage(String value) {
 		if(value == null) {
@@ -338,7 +338,7 @@ public class Project1bService extends HttpServlet {
 	 * @param port
 	 * @return markup
 	 */
-	protected String generateMarkup(String startMessage, String hostname, int port) {
+	protected String generateMarkup(String startMessage, String hostname, int port, String CookieIPP) {
 		//Time Expiry is calculated at current + 10 minutes. 
 		Date serverDate = new Date();
 		Calendar cal = Calendar.getInstance();
@@ -357,7 +357,10 @@ public class Project1bService extends HttpServlet {
 				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
+				+ "<input type=\"submit\" name=\"Action\" value=\"crash\" /><br/><br/></form>"
 				+ "Session on " + hostname
+				+ "IPP of host " + IPP
+				+ "Found on IPP " + CookieIPP
 				+ ":" + port + "<br/><br/>" + "Expires "
 				+ time + " EST";
 		
@@ -384,7 +387,7 @@ public class Project1bService extends HttpServlet {
 		//Give the user a cookie on first access to our service.
 		updateCookie(request, response, startMessage);
 		
-		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort()));
+		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort(),"NONE"));
 	}
 
 	/**
@@ -446,7 +449,7 @@ public class Project1bService extends HttpServlet {
 			//Update cookie for all further actions except Logout
 			updateCookie(request, response, startMessage);
 			
-			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort()));
+			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), "NONE"));
 		}
 	}	
 		
