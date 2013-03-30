@@ -54,14 +54,11 @@ public class ClientRPC {
 				recvPkt.setLength(inBuf.length);
 				rpcSocket.receive(recvPkt);
 				String[] data = new String(recvPkt.getData()).split("_");
+				System.out.println(data[0]+"callid"+this.callid);
 				if(data[0].equals(this.callid)) {
 					flag = false;
 					str = new String(recvPkt.getData());
 				}
-				//System.out.println("Received data-------------");
-				//System.out.println("beginning"+new String(recvPkt.getData()) + "end");
-				//System.out.println("-----------------end data");
-				//System.out.println(recvPkt.getData());
 			} while(flag); //TODO while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
 			System.out.println("RPC Timeout occurred. Deleting session info from sessionTable");
@@ -138,7 +135,7 @@ public class ClientRPC {
 					return null;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				//e.printStackTrace();
+				e.printStackTrace();
 				System.out.println("rpc failed");
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {

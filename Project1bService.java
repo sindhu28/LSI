@@ -54,7 +54,7 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 100;
-	public static final int RPCTIMEOUT = 3000;
+	public static final int RPCTIMEOUT = 30000;
 	
 	public String getMessage(String value) {
 		if(value == null) {
@@ -120,7 +120,7 @@ public class Project1bService extends HttpServlet {
 	public Project1bService() throws SocketException {
 		//Initialize and schedule timer for cleaner thread
 		memberSet.add("192.168.1.9_51310");
-		memberSet.add("192.168.1.2_51305");
+		memberSet.add("192.168.204.1_51305");
         RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
         ServerRPC server = new ServerRPC();
@@ -262,7 +262,7 @@ public class Project1bService extends HttpServlet {
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
 			System.out.println("Session start no cookie");
-			IPP_primary = request.getLocalAddr() + "_" +serverPort;
+			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
@@ -272,6 +272,7 @@ public class Project1bService extends HttpServlet {
 			if (IPP_backup == null) {
 				IPP_backup = IPP_null;
 			}
+			System.out.println("noo cookie"+SID+"///Value////"+value);
 			sessionTable.put(SID, value);
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			//System.out.println("update cookie: "+cookieValue + "----------------------------");
@@ -380,7 +381,7 @@ public class Project1bService extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
 		String SID = getSessionID(request);
-		IPP = request.getLocalAddr()+"_"+serverPort;
+		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
 		
 		if(SID != null) {
 			startMessage = getMessage(sessionTable.get(SID));
