@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -54,6 +55,9 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONWRITE = 1001;
 	public static final int MAXPACKETSIZE = 100;
 	public static final int RPCTIMEOUT = 1500;
+	
+	//TODO:HACK
+	//public static String myIP = "192.168.1.5";
 		
 	public String getMessage(String value) {
 		if(value == null) {
@@ -126,6 +130,8 @@ public class Project1bService extends HttpServlet {
 	 */
 	public Project1bService() throws SocketException {
 		//Initialize and schedule timer for cleaner thread
+		//TODO:HACK
+//		memberSet.add("192.168.1.7_51310");
 		RunTimer runTimer = new RunTimer();
         timer.schedule(runTimer, SCHEDULER_TIMEOUT);
         ServerRPC server = new ServerRPC();
@@ -192,7 +198,7 @@ public class Project1bService extends HttpServlet {
 			String SID = values[0]+"_"+values[1]+"_"+values[2];
 			int version = Integer.valueOf(values[3]);
 			//check if SID is in local session table AND if the local table has the most recent value
-			
+			//TODO:HACK to work on local machine
 			if(SID != null && sessionTable.containsKey(SID) && version == Integer.valueOf(sessionTable.get(SID).split("_")[0])){
 			    sessionTableValue = getSessionTableEntry(SID);
 			}
@@ -259,6 +265,8 @@ public class Project1bService extends HttpServlet {
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort;
+			//TODO:HACK
+//			IPP_primary = myIP + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
@@ -315,7 +323,7 @@ public class Project1bService extends HttpServlet {
 		for(String member: memberSet) {
 			String[] values = member.split("_");
 			destAddrs[i] = InetAddress.getByName(values[0]);
-			destPorts[i] = Integer.valueOf(values[1]);
+			destPorts[i] = Integer.valueOf(values[1].trim());
 			i++;
 		}
 		String arguments = SESSIONWRITE +"_" + SID +"_" + value.toString(); 
@@ -389,6 +397,8 @@ public class Project1bService extends HttpServlet {
 		String startMessage = START_MESSAGE;
 		String SID = getSessionID(request);
 		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
+		//TODO:HACK
+//		IPP = myIP+"_"+serverPort;
 				
 		if(SID != null) {
 			startMessage = getMessage(sessionTable.get(SID));
@@ -399,6 +409,8 @@ public class Project1bService extends HttpServlet {
 		if(cookieBackup == IPP_null)
 			cookieBackup = "IPP_null";
 		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort(),"NONE", cookieBackup));
+		//TODO:HACK
+//		out.println(generateMarkup(startMessage, myIP, request.getServerPort(),"NONE", cookieBackup));
 	}
 
 	/**
@@ -434,10 +446,14 @@ public class Project1bService extends HttpServlet {
 			String cache = IPP;
 			
 			String sessionTableValue = getSessionValue(request);
+			System.out.println(sessionTableValue);
+			
 			if(sessionTableValue != null){
 			//tokens = sessionTableValue + IPP where it was found
 			String[] tokens = sessionTableValue.split("_");
-			CookieIPP = sessionTableValue.split("_")[tokens.length-1];
+			System.out.println(Arrays.toString(tokens));
+			CookieIPP = (sessionTableValue.split("_")[tokens.length-2]+"_"+sessionTableValue.split("_")[tokens.length-1]).trim();
+			System.out.println(CookieIPP);
 			if(CookieIPP == cache)
 				CookieIPP = "cache";
 			else if(CookieIPP == primary)
@@ -447,9 +463,10 @@ public class Project1bService extends HttpServlet {
 			else
 			    CookieIPP = "NONE";
 			sessionTableValue = "";
-			for(int i=0; i< tokens.length-2; i++)
+			for(int i=0; i< tokens.length-3; i++)
 				sessionTableValue += tokens[i]+"_";
-			sessionTableValue += tokens[tokens.length-2];
+			sessionTableValue += tokens[tokens.length-3];
+			System.out.println(sessionTableValue);
 			}
 			
 			
@@ -487,6 +504,8 @@ public class Project1bService extends HttpServlet {
 			if(cookieBackup == IPP_null)
 				cookieBackup = "IPP_null";
 			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), CookieIPP, cookieBackup));
+			//TODO:HACK
+//			out.println(generateMarkup(startMessage, myIP, request.getLocalPort(), CookieIPP, cookieBackup));
 		}
 	}	
 		
