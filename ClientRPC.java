@@ -27,7 +27,6 @@ public class ClientRPC {
 		rpcSocket.setSoTimeout(Project1bService.RPCTIMEOUT);
 		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
-		//outBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		callid = ""+(10000*serverPort);
 		this.opcode =  Integer.valueOf(args[0]);
@@ -36,17 +35,14 @@ public class ClientRPC {
 		this.destAddrs = destAddrs;
 		this.destPorts = destPorts;
 		outBuf = (this.callid+"_"+arguments).getBytes("UTF-8");
-		String s = new String(outBuf);
 	}
 	
 	public void sendPacket(InetAddress addr, int destPort){
 		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, addr, destPort);
 		try {
-			System.out.println("Sending to: "+addr);
-			System.out.println(destPort);
 			rpcSocket.send(sendPkt);
 		} catch(IOException e) {
-			System.out.println(e.getMessage());
+//			System.out.println(e.getMessage());
 		}
 	}
 	
@@ -58,15 +54,13 @@ public class ClientRPC {
 				recvPkt.setLength(inBuf.length);
 				rpcSocket.receive(recvPkt);
 				String[] data = new String(recvPkt.getData()).split("_");
-				System.out.println(data[0] + " " + this.callid);
 				if(data[0].equals(this.callid)) {
 					flag = false;
 					str = new String(recvPkt.getData());
-					System.out.println("str recieved: "+str);
 				}
-			} while(flag); //TODO while(the callID in inBuf is not the expected one);
+			} while(flag); //while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
-			System.out.println("RPC Timeout occurred. Deleting session info from sessionTable");
+//			System.out.println("RPC Timeout occurred. Deleting session info from sessionTable");
 			rpcSocket.close();
 			return null;
 		} catch(InterruptedIOException iioe) {
@@ -76,7 +70,7 @@ public class ClientRPC {
 		} catch(IOException ioe) {
 			//other error
 			//TODO retry receiving here
-//			System.out.println("error");
+//			System.out.println("Error");
 		}
 		rpcSocket.close();
 		return str;
@@ -89,12 +83,8 @@ public class ClientRPC {
 	public String SessionReadClient() throws IOException {
 		String result;
 		for(int i = 0; i < destAddrs.length; i++){
-			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
-			//TODO: HACK
-			System.out.println(destAddrs[i].equals(Project1bService.getIP())+" "+ destAddrs.equals(Project1bService.getIPNull()));
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
-				System.out.println("not sent to ip.");
 			}
 			else{
 			    sendPacket(destAddrs[i], destPorts[i]);
@@ -106,12 +96,8 @@ public class ClientRPC {
 
 	private String SessionBackup() throws IOException {
 		for(int i = 0; i < destAddrs.length; i++){
-			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
-			//TODO: HACK
-			System.out.println(destAddrs[i].equals(Project1bService.getIP())+" "+ destAddrs.equals(Project1bService.getIPNull()));
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
-				System.out.println("not sent to ip");
 			}
 			else{
 			    sendPacket(destAddrs[i], destPorts[i]);
@@ -122,21 +108,12 @@ public class ClientRPC {
 	}
 	
 	public String run() {
-//		System.out.println("opcode is : "+this.opcode+"----");
 		if(this.opcode == Project1bService.SESSIONREAD){
 			try {
-//				System.out.println("before sessionReadClient");
 				String sessionTableValue = SessionReadClient();
-//				System.out.println("after sessionREADCLIENT");
 				if(sessionTableValue == null) {
 					return null;
 				}
-//				String[] values = sessionTableValue.split("_");
-//				sessionTableValue="";
-//				for(int i=1;i<values.length-1;i++) {
-//					sessionTableValue += values[i]+"_";
-//				}
-//				sessionTableValue += values[values.length-1];
 				
 				int indexofcallid = sessionTableValue.indexOf("_");
 				sessionTableValue = sessionTableValue.substring(indexofcallid+1);
@@ -149,17 +126,16 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-//				System.out.println("rpc failed");
+//				System.out.println("RPC failed");
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {
 			try {
-				System.out.println("In sessionWrite: opcode" +this.opcode);
 				String IPP_backup = SessionBackup();
 				return IPP_backup;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
-//				System.out.println("rpc failed");
+//				System.out.println("RPC failed");
 			}
 		}
 		return null;
