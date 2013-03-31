@@ -287,12 +287,17 @@ public class Project1bService extends HttpServlet {
 			value = versionNo +"_" + startMessage + "_" +time;
 			
 			IPP_primary = values[4]+"_"+values[5];
-			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_primary) == false && IPP_primary != "0_0")
+			if(!IPP_primary.equals(IPP) && !memberSet.contains(IPP_primary) && !IPP_primary.equals("0_0")){
+				System.out.println("LOG: Adding " +IPP_primary +" to memberset");
 				memberSet.add(IPP_primary);
+			}
 				
 			IPP_backup = values[6]+"_"+values[7];
-			if(!IPP_backup.equals(IPP) && memberSet.contains(IPP_backup) == false && IPP_backup != "0_0")
+			if(!IPP_backup.equals(IPP) && !memberSet.contains(IPP_backup) && !IPP_backup.equals("0_0")){
+				System.out.println("LOG: Adding " +IPP_backup +" to memberset");
 				memberSet.add(IPP_backup);
+			}
+			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+ " "+IPP_backup);
 			
 			if(sessionTable.contains(SID))
 			    sessionTable.replace(SID, value);
@@ -426,6 +431,7 @@ public class Project1bService extends HttpServlet {
 		response.setContentType("text/html");
 		String action = request.getParameter("Action");
 		String CookieIPP = "NONE";
+		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
