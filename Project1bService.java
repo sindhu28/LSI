@@ -12,6 +12,11 @@ import java.net.UnknownHostException;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+<<<<<<< HEAD
+=======
+import java.util.ArrayList;
+
+>>>>>>> Version 15
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -298,11 +303,29 @@ public class Project1bService extends HttpServlet {
 			int session = sessionID.incrementAndGet(); 
 			SID = ""+session+"_"+IPP_primary;
 			value = ""+versionNo +"_" + startMessage + "_" +time;
+<<<<<<< HEAD
+			if(SID!=null) {
+				sessionTable.put(SID, value);
+=======
+<<<<<<< HEAD
+			
+			IPP_backup = RPCSessionTableUpdate(SID, value);
+			if (IPP_backup == null) {
+				IPP_backup = IPP_null;
+>>>>>>> Version 15
+			}
+			
+<<<<<<< HEAD
+			IPP_backup = RPCSessionTableUpdate(SID, value);
+=======
+=======
 			if(SID!=null) {
 				sessionTable.put(SID, value);
 			}
 			
 			IPP_backup = RPCSessionTableUpdate(SID, value);
+>>>>>>> Version 15
+>>>>>>> Version 15
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			clientCookie = new Cookie(COOKIE_NAME, URLEncoder.encode(cookieValue, "UTF-8"));
 		} else { 
@@ -316,24 +339,47 @@ public class Project1bService extends HttpServlet {
 			IPP_primary =  getPrimaryFromCookieValues(values);
 			if(IPP_primary!=null && !IPP_primary.equals(IPP) && !memberSet.containsKey(IPP_primary) && !IPP_primary.equals(DUMMYIPP)){
 				System.out.println("LOG: Adding " +IPP_primary +" to memberset");
+<<<<<<< HEAD
 				memberSet.put(IPP_primary,1);
+=======
+<<<<<<< HEAD
+				memberSet.put(IPP_primary, null);
+=======
+				memberSet.put(IPP_primary,1);
+>>>>>>> Version 15
+>>>>>>> Version 15
 			}
 				
 			IPP_backup =  getBackupFromCookieValues(values);
 			if(IPP_primary!=null && !IPP_backup.equals(IPP) && !memberSet.containsKey(IPP_backup) && !IPP_backup.equals(DUMMYIPP)){
 				System.out.println("LOG: Adding " +IPP_backup +" to memberset");
+<<<<<<< HEAD
 				memberSet.put(IPP_backup,1);
+=======
+<<<<<<< HEAD
+				memberSet.put(IPP_backup, null);
+=======
+				memberSet.put(IPP_backup,1);
+>>>>>>> Version 15
+>>>>>>> Version 15
 			}
 			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+ " "+IPP_backup);
 			
 			value = versionNo +"_" + startMessage + "_" +time;
 			if(SID!= null) {
+<<<<<<< HEAD
 				synchronized(this) {
 					if(sessionTable.containsKey(SID))
 						sessionTable.replace(SID, value);
 					else
 						sessionTable.put(SID, value);
 				}
+=======
+				if(sessionTable.containsKey(SID))
+					sessionTable.replace(SID, value);
+				else
+					sessionTable.put(SID, value);
+>>>>>>> Version 15
 			}
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort; //new IPP_primary
 			IPP_backup = RPCSessionTableUpdate(SID, value);								 //new IPP_backup
@@ -435,8 +481,18 @@ public class Project1bService extends HttpServlet {
 		//Returns the IPP of response from the first server
 		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
 		int[] destPorts = new int[memberSet.size()];
+<<<<<<< HEAD
 		String IPP_backup = DUMMYIPP;
 		int i=0;	String member;
+=======
+<<<<<<< HEAD
+		int i=0;
+		String member;
+=======
+		String IPP_backup = DUMMYIPP;
+		int i=0;	String member;
+>>>>>>> Version 15
+>>>>>>> Version 15
 		Iterator it = memberSet.entrySet().iterator();
 		while (it.hasNext()) {
 			member = ((Map.Entry<String, Integer>)it.next()).getKey();
@@ -518,7 +574,15 @@ public class Project1bService extends HttpServlet {
 				+ "<form action=\"\" method=\"post\"> "
 				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
+<<<<<<< HEAD
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/>	"
+=======
+<<<<<<< HEAD
+				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
+=======
+				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/>	"
+>>>>>>> Version 15
+>>>>>>> Version 15
 				+ "<input type=\"submit\" name=\"Action\" value=\"Crash\" /><br/><br/></form>"
 				+ "Session on " + hostname
 				+ ":" + port + "<br/><br/>"
@@ -545,6 +609,16 @@ public class Project1bService extends HttpServlet {
 //		}
 //		else
 //			System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" No cookie");
+<<<<<<< HEAD
+=======
+		if(CRASH == true){
+			try {
+				Thread.sleep(1000000000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+			} 
+		}
+>>>>>>> Version 15
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
@@ -605,6 +679,7 @@ public class Project1bService extends HttpServlet {
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
+<<<<<<< HEAD
 			synchronized(this) {
 				if(SID!=null && sessionTable.containsKey(SID))
 					sessionTable.remove(SID);
@@ -613,6 +688,25 @@ public class Project1bService extends HttpServlet {
 			out.println("<h2>"+END_MESSAGE+"</h2>");	
 		} else if(action.equals("Crash")) {
 				CRASH = true;
+=======
+			if(SID!=null && sessionTable.containsKey(SID))
+				sessionTable.remove(SID);
+			RPCSessionTableRemove(SID);
+			out.println("<h2>"+END_MESSAGE+"</h2>");	
+		} else if(action.equals("Crash")) {
+<<<<<<< HEAD
+			while(true) {
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+=======
+				CRASH = true;
+>>>>>>> Version 15
+>>>>>>> Version 15
 		} else {
 			String sessionTableValue = null;
 			Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
@@ -666,11 +760,16 @@ public class Project1bService extends HttpServlet {
 						}
 					} else { 
 //			    		Cookie is stale so remove entry from session table
+<<<<<<< HEAD
 						synchronized(this) {
 							if(SID!=null && sessionTable.containsKey(SID)) {
 								sessionTable.remove(SID);
 							}
 						}
+=======
+						if(SID!=null && sessionTable.containsKey(SID))
+						sessionTable.remove(SID);
+>>>>>>> Version 15
 					}
 			    }
 			    	//Validate startMessage
@@ -686,7 +785,10 @@ public class Project1bService extends HttpServlet {
 			if(cookieBackup == DUMMYIPP)
 				cookieBackup = "IPP_null";
 			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), CookieIPP, cookieBackup));
+<<<<<<< HEAD
 			CRASH = true;
+=======
+>>>>>>> Version 15
 			if(CRASH == true){
 				try {
 					Thread.sleep(1000000000);
@@ -707,6 +809,7 @@ public class Project1bService extends HttpServlet {
 	private void runSessionTableCleaner(){
 		//Clean the session table only if its size has exceeded beyond MAX_ENTRIES
 		if(sessionTable.size() >= MAX_ENTRIES){
+<<<<<<< HEAD
 			synchronized(this) {
 				Iterator<String> it = sessionTable.keySet().iterator();
 				Timestamp currentTS = new Timestamp(new Date().getTime());
@@ -725,6 +828,24 @@ public class Project1bService extends HttpServlet {
 					}
 			    }
 			}
+=======
+			Iterator<String> it = sessionTable.keySet().iterator();
+			Timestamp currentTS = new Timestamp(new Date().getTime());
+			while (it.hasNext()) {
+				//Remove all stale(expired) cookie entries from Session Table
+				try{
+					String key = it.next();
+					Date oldDate = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US).parse(getDate(sessionTable.get(key)));
+					Timestamp oldTS = new Timestamp(oldDate.getTime());
+					long diffTS = currentTS.getTime() - oldTS.getTime();
+					if (diffTS >= EXPIRATION_PERIOD){
+						sessionTable.remove(key);
+					}	
+				}catch (Exception e) {
+					//do nothing
+				}
+		    }
+>>>>>>> Version 15
 		}
 	}
 
@@ -736,7 +857,11 @@ public class Project1bService extends HttpServlet {
 		return IPP;
 	}
 
+<<<<<<< HEAD
 	public static synchronized void removeSessionTableEntry(String sessionID) {
+=======
+	public static void removeSessionTableEntry(String sessionID) {
+>>>>>>> Version 15
 		if(sessionID != null)
 			sessionTable.remove(sessionID);		
 	}
