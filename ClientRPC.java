@@ -1,5 +1,3 @@
-package edu.cornell.cs5300.project1b;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
@@ -25,7 +23,6 @@ public class ClientRPC {
 	DatagramPacket sendPkt;
 	DatagramPacket recvPkt;
 	
-
 	public static String makeArgument(Project1bService.OPCODE opcode, String sessionID, int version) {
 		return ""+opcode.value+"_"+sessionID+"_"+version;
 	}
@@ -39,16 +36,12 @@ public class ClientRPC {
 		return makeArgument(opcode, sessionNum, IP+"_"+port, version);
 	}
 	
-
-
 	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts) throws SocketException, UnsupportedEncodingException {
 		String[] args = arguments.split("_");
-		
 		rpcSocket = new DatagramSocket(); 
 		rpcSocket.setSoTimeout(Project1bService.RPCTIMEOUT);
 		serverPort = rpcSocket.getLocalPort();
 		inBuf = new byte[Project1bService.MAXPACKETSIZE];
-		//outBuf = new byte[Project1bService.MAXPACKETSIZE];
 		recvPkt = new DatagramPacket(inBuf, inBuf.length);
 		callid = ""+(10000*serverPort);
 		this.opcode =  Project1bService.OPCODE.lookup(Integer.valueOf(args[0]));
@@ -60,39 +53,40 @@ public class ClientRPC {
 		String s = new String(outBuf);
 	}
 	
-	private void sendPacket(InetAddress addr, int destPort) throws IOException{
+	public void sendPacket(InetAddress addr, int destPort){
 		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, addr, destPort);
-		rpcSocket.send(sendPkt);
+		try {
+			rpcSocket.send(sendPkt);
+		} catch(IOException e) {
+//			System.out.println(e.getMessage());
+		}
 	}
 	
-
 	public String receivePacket(){
 		boolean flag = true;
 		String str = null;
-		
 		try {
 			do {
 				recvPkt.setLength(inBuf.length);
 				rpcSocket.receive(recvPkt);
 				String[] data = new String(recvPkt.getData()).split("_");
-				System.out.println(data[0]+"callid"+this.callid);
 				if(data[0].equals(this.callid)) {
 					flag = false;
 					str = new String(recvPkt.getData());
 				}
-			} while(flag); //TODO while(the callID in inBuf is not the expected one);
+			} while(flag); //while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
-			System.out.println("RPC Timeout occurred. Deleting session info from sessionTable");
+			System.out.println("LOG: RPC Timeout occurred. Deleting session info from sessionTable");
 			rpcSocket.close();
 			return null;
 		} catch(InterruptedIOException iioe) {
 			//timeout
-			System.out.println("timeout");
+//			System.out.println("IO exception");
 			recvPkt = null;
 		} catch(IOException ioe) {
 			//other error
 			//TODO retry receiving here
-			System.out.println("error");
+//			System.out.println("Error");
 		}
 		rpcSocket.close();
 		return str;
@@ -102,33 +96,29 @@ public class ClientRPC {
 	// SessionReadClient(sessionID, sessionVersionNum)
 	// with multiple [destAddr, destPort] pairs
 	//
-	private String SessionReadClient() throws IOException {
-		String result;
+	public String SessionReadClient() throws IOException {
+		String result = null;
+		int count = 1;
 		for(int i = 0; i < destAddrs.length; i++){
-			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
-			//TODO: HACK
-			destAddrs[0] = InetAddress.getByName("192.168.1.2");
-			destPorts[0] = 51305;
-			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getInetAddr())){
+			if(destAddrs[i].equals(Project1bService.getInetAddr()) || destAddrs.equals(Project1bService.getIPNull().getHostName())){
 				//do nothing
+				count++;
+				System.out.println("LOG: NO RPC");
 			}
 			else{
+				String s= ""+destAddrs[i];
+				System.out.println("LOG: CLIENT addr: "+ s);
 			    sendPacket(destAddrs[i], destPorts[i]);
 			}
 		}
-		result = receivePacket();
+		if(count != destAddrs.length)
+		    result = receivePacket();
 		return result;
 	}
 
 	private String SessionBackup() throws IOException {
 		for(int i = 0; i < destAddrs.length; i++){
-			//TODO destPort is the corresponding port of destPorts for the addr in destAddrs
-			//TODO: HACK
-			destAddrs[0] = InetAddress.getByName("192.168.1.9");
-			destPorts[0] = 51303;
-			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getInetAddr())){
+			if(destAddrs[i].equals(Project1bService.getInetAddr()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
 			}
 			else{
@@ -140,15 +130,16 @@ public class ClientRPC {
 	}
 	
 	public String run() {
-		System.out.println("opcode is : "+this.opcode.toString()+"----");
 		if(this.opcode == Project1bService.OPCODE.SESSIONREAD){
 			try {
-				System.out.println("before sessionReadClient");
 				String sessionTableValue = SessionReadClient();
-				System.out.println("after sessionREADCLIENT");
 				if(sessionTableValue == null) {
 					return null;
 				}
+				
+				int indexofcallid = sessionTableValue.indexOf("_");
+				sessionTableValue = sessionTableValue.substring(indexofcallid+1);
+				
 				int sessionTableVersion = Integer.valueOf(sessionTableValue.split("_")[0]);
 				if(version == sessionTableVersion)
 					return sessionTableValue;
@@ -157,27 +148,21 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				System.out.println("rpc failed");
+				System.out.println("LOG: rpc failed");
 			} 
 		} else if(this.opcode == Project1bService.OPCODE.SESSIONWRITE) {
 			try {
+//				System.out.println("In sessionWrite: opcode" +this.opcode);
 				String IPP_backup = SessionBackup();
 				return IPP_backup;
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
-				System.out.println("rpc failed");
-			}
-		} else if(this.opcode == Project1bService.OPCODE.SESSIONDELETE) {
-			for (int i = 0; i < destAddrs.length; i++) {
-				try {
-					sendPacket(destAddrs[i], destPorts[i]);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+				System.out.println("LOG: rpc failed");
 			}
 		}
 		return null;
 	}
+
+	
 }
