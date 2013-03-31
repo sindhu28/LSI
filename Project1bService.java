@@ -666,6 +666,8 @@ public class Project1bService extends HttpServlet {
 						startMessage = request.getParameter("replace_string");
 					}
 			    	if(sessionTableValue == null) {
+			    		cookie.setMaxAge(0);
+						response.addCookie(cookie);
 			    		out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
 			    		return;
 			    	} else {
