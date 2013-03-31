@@ -287,11 +287,11 @@ public class Project1bService extends HttpServlet {
 			value = versionNo +"_" + startMessage + "_" +time;
 			
 			IPP_primary = values[4]+"_"+values[5];
-			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_primary) == false)
+			if(!IPP_primary.equals(IPP) && memberSet.contains(IPP_primary) == false && IPP_primary != "0_0")
 				memberSet.add(IPP_primary);
 				
 			IPP_backup = values[6]+"_"+values[7];
-			if(!IPP_backup.equals(IPP) && memberSet.contains(IPP_backup) == false)
+			if(!IPP_backup.equals(IPP) && memberSet.contains(IPP_backup) == false && IPP_backup != "0_0")
 				memberSet.add(IPP_backup);
 			
 			if(sessionTable.contains(SID))
