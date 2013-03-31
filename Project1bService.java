@@ -363,7 +363,7 @@ public class Project1bService extends HttpServlet {
 		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
 		serverDate = cal.getTime(); //Date on server might be in different time zone
 		Date date = new Date(serverDate.getTime() + TimeZone.getTimeZone("EST").getRawOffset());
-		
+			
 		SimpleDateFormat ft = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US);
 		String time = ft.format(date);
 		
@@ -397,6 +397,14 @@ public class Project1bService extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
+		Cookie c = getCookie(request.getCookies(), COOKIE_NAME);
+		if(c != null){
+		    String v = URLDecoder.decode(c.getValue(), "UTF-8").trim();
+		    System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" ---"+v);
+		}
+		else
+			System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" No cookie");
+		
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
@@ -424,6 +432,14 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
+		
+		Cookie c = getCookie(request.getCookies(), COOKIE_NAME);
+		if(c != null){
+		    String v = URLDecoder.decode(c.getValue(), "UTF-8").trim();
+		    System.out.println("LOG: in doPost(), IPP, cookie value "+IPP+" ---"+v);
+		}
+		else
+			System.out.println("LOG: in doPost(), IPP, cookie value "+IPP+" No cookie");
 		
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
