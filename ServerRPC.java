@@ -66,7 +66,7 @@ public class ServerRPC implements Runnable{
 					System.out.println("Session Read-----------");
 					System.out.println(arguments);
 					System.out.println("================");
-					result = arguments[0] + "_" + SessionRead(arguments);
+					result = arguments[0] + "_" + sessionRead(arguments);
 					
 					if(result == null) {
 						continue;
@@ -82,7 +82,7 @@ public class ServerRPC implements Runnable{
 					break;
 					
 				case SESSIONWRITE:
-					result = arguments[0] + "_" + SessionBackup(arguments);
+					result = arguments[0] + "_" + sessionBackup(arguments);
 					if(result == null) {
 						continue;
 					} else {
@@ -96,8 +96,9 @@ public class ServerRPC implements Runnable{
 					}
 					break;
 				case SESSIONDELETE:
-					
-					break; //TODO actually delete what we're supposed to
+					sessionDelete(arguments);
+					// no response needed
+					continue;
 				default:
 					continue; //TODO Aaron: I am wary of defaults...
 		    }
@@ -116,14 +117,18 @@ public class ServerRPC implements Runnable{
 			}
 		}
 	}
+	
+	private void sessionDelete(String[] arguments) {
+		Project1bService.removeSessionTableEntry(arguments[2]);
+	}
 
-	private String SessionBackup(String[] arguments) {
+	private String sessionBackup(String[] arguments) {
 		String IPP_backup = Project1bService.setSessionTableEntry(arguments[2], arguments[3]);
 		System.out.println("Session entry" + IPP_backup);
 		return IPP_backup;
 	}
 
-	private String SessionRead(String[] arguments) {
+	private String sessionRead(String[] arguments) {
 		String sessionID = arguments[2] + "_" + arguments[3] + "_" + arguments[4];
 		String sessionEntry = Project1bService.getSessionTableEntry(sessionID);
 		System.out.println("sessionid: "+ sessionID+"-----");

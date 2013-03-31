@@ -92,21 +92,21 @@ public class Project1bService extends HttpServlet {
 	public static final int MAXPACKETSIZE = 100;
 	public static final int RPCTIMEOUT = 30000;
 	
-	public String getMessage(String value) {
+	public static String getMessage(String value) {
 		if(value == null) {
 			return null;
 		}
 		return value.split("_")[1];
 	}
 	
-	public int getVersion(String value) {
+	public static int getVersion(String value) {
 		if(value == null) {
 			return -1;
 		}
 		return Integer.valueOf(value.split("_")[0]);
 	}
 	
-	public String getDate(String value) {
+	public static String getDate(String value) {
 		if(value == null) {
 			return null;
 		}
@@ -472,9 +472,9 @@ public class Project1bService extends HttpServlet {
  
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
-			//TODO Aaron: should we be removing SID without a cookie?
-			sessionTable.remove(SID);
+			removeSessionTableEntry(SID);
 			out.println("<h2>"+END_MESSAGE+"</h2>");
+			// Let other servers know they can delete it. Don't care about response
 			if (clientCookie != null) {
 				OPCODE opcode = OPCODE.SESSIONDELETE;
 				//TODO Aaron: I should clean this up
@@ -489,12 +489,7 @@ public class Project1bService extends HttpServlet {
 				ClientRPC deletecall = new ClientRPC(args, destAddrs, destPorts);
 				deletecall.run();
 			}
-			try {
-				runSessionTableCleaner();
-			} catch (ParseException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			
 		} else if (action.equals("CrashServer")) {
 			RPCServer.crashed = true;
 			RPCServer.teardown();
@@ -544,7 +539,7 @@ public class Project1bService extends HttpServlet {
 	 * Cleans the session table based on the size of the table.
 	 * @throws ParseException 
 	 */
-	private void runSessionTableCleaner() throws ParseException{
+	private static void runSessionTableCleaner() throws ParseException{
 		//Clean the session table only if its size has exceeded beyond MAX_ENTRIES
 		if(sessionTable.size() >= MAX_ENTRIES){
 			Iterator<String> it = sessionTable.keySet().iterator();
@@ -560,6 +555,16 @@ public class Project1bService extends HttpServlet {
 				}	    	
 		    }
 		}
+	}
+	
+	public static void removeSessionTableEntry(String SID) {
+		try {
+			runSessionTableCleaner();
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		sessionTable.remove(SID);
 	}
 
 	public static String setSessionTableEntry(String sessionID, String sessionValue) {
