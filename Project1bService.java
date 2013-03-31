@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -45,7 +46,7 @@ public class Project1bService extends HttpServlet {
 	private static AtomicInteger sessionID = new AtomicInteger();
 	private static ConcurrentHashMap<String, String> sessionTable = new ConcurrentHashMap<String, String>();
 	private Timer timer = new Timer();
-	private static ArrayList<String> memberSet = new ArrayList<String>();
+	private static ConcurrentHashMap<String,Integer> memberSet = new ConcurrentHashMap<String,Integer>();
 	private static int serverPort;
 	private static String IPP;
 	private static final String IPP_null = "dummy_0_0";
@@ -289,13 +290,13 @@ public class Project1bService extends HttpServlet {
 			IPP_primary = values[4]+"_"+values[5];
 			if(!IPP_primary.equals(IPP) && !memberSet.contains(IPP_primary) && !IPP_primary.equals("0_0")){
 				System.out.println("LOG: Adding " +IPP_primary +" to memberset");
-				memberSet.add(IPP_primary);
+				memberSet.put(IPP_primary, null);
 			}
 				
 			IPP_backup = values[6]+"_"+values[7];
 			if(!IPP_backup.equals(IPP) && !memberSet.contains(IPP_backup) && !IPP_backup.equals("0_0")){
 				System.out.println("LOG: Adding " +IPP_backup +" to memberset");
-				memberSet.add(IPP_backup);
+				memberSet.put(IPP_backup, null);
 			}
 			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+ " "+IPP_backup);
 			
@@ -325,7 +326,11 @@ public class Project1bService extends HttpServlet {
 		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
 		int[] destPorts = new int[memberSet.size()];
 		int i=0;
-		for(String member: memberSet) {
+		String member;
+		Iterator it = memberSet.entrySet().iterator();
+		while (it.hasNext()) {
+			member = ((Map.Entry<String, Integer>)it.next()).getKey();
+		//for(String member: memberSet) {
 			String[] values = member.split("_");
 			destAddrs[i] = InetAddress.getByName(values[0]);
 			destPorts[i] = Integer.valueOf(values[1].trim());
