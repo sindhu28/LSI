@@ -1,11 +1,13 @@
+package edu.cornell.cs5300.Project1b;
+
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 
 public class ClientRPC {
 	DatagramSocket rpcSocket;
@@ -20,26 +22,78 @@ public class ClientRPC {
 	String callid;
 	DatagramPacket sendPkt;
 	DatagramPacket recvPkt;
+	String initArguments;
 	
-	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts) throws SocketException, UnsupportedEncodingException {
-		String[] args = arguments.split("_");
-		rpcSocket = new DatagramSocket(); 
-		rpcSocket.setSoTimeout(Project1bService.RPCTIMEOUT);
-		serverPort = rpcSocket.getLocalPort();
-		inBuf = new byte[Project1bService.MAXPACKETSIZE];
-		recvPkt = new DatagramPacket(inBuf, inBuf.length);
-		callid = ""+(10000*serverPort);
-		this.opcode =  Integer.valueOf(args[0]);
-		this.sessionID = args[1]+"_"+args[2]+"_"+args[3];
-		this.version = Integer.valueOf(args[4]);
+	ClientRPC(String arguments, InetAddress[] destAddrs, int[] destPorts){
+		this.initArguments = arguments;
 		this.destAddrs = destAddrs;
 		this.destPorts = destPorts;
-		outBuf = (this.callid+"_"+arguments).getBytes("UTF-8");
-		String s = new String(outBuf);
 	}
 	
-	public void sendPacket(InetAddress addr, int destPort){
-		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, addr, destPort);
+	public void initRequest(){
+		String[] args = Project1bService.getValues(this.initArguments);
+		try {
+			rpcSocket = new DatagramSocket();
+			serverPort = rpcSocket.getLocalPort();
+			rpcSocket.setSoTimeout(Project1bService.RPCTIMEOUT);
+			callid = ""+(10000*serverPort);
+		} catch (SocketException e) {
+			rpcSocket = null;
+			serverPort = 0;
+			callid = null;
+		} 
+		
+		inBuf = new byte[Project1bService.MAXPACKETSIZE];
+		recvPkt = new DatagramPacket(inBuf, inBuf.length);
+		this.opcode =  getOpcode(args);
+		this.sessionID = getSessionID(args);	
+		this.version = getVersion(args);
+		this.outBuf = getOutBuf(this.callid,this.initArguments);		
+	}
+	
+	private byte[] getOutBuf(String callid, String arguments) {
+		byte[] out;
+		try {
+			out = (callid+"_"+arguments).getBytes("UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			out = null;
+		}
+		return out;
+	}
+
+	private int getVersion(String[] args) {
+		int version;
+		try{
+			version = Integer.valueOf(args[4]);
+		}catch (Exception e) {
+			version = Project1bService.NOVERSION;
+		}
+		return version;
+	}
+
+	private String getSessionID(String[] args) {
+		String sessionID;
+		try{
+			sessionID = args[1]+"_"+args[2]+"_"+args[3];
+		}catch (Exception e) {
+			sessionID = null;
+		}
+		return sessionID;
+	}
+
+	private int getOpcode(String[] args) {
+		int opcode;
+		try{
+			opcode = Integer.valueOf(args[0]);
+		}catch (Exception e) {
+			opcode = Project1bService.NOOPCODE;
+		}
+		return opcode;
+	}
+	
+
+	public void sendPacket(InetAddress returnAddr, int returnPort){
+		DatagramPacket sendPkt = new DatagramPacket(outBuf, outBuf.length, returnAddr, returnPort);
 		try {
 			rpcSocket.send(sendPkt);
 		} catch(IOException e) {
@@ -55,26 +109,68 @@ public class ClientRPC {
 				recvPkt.setLength(inBuf.length);
 				rpcSocket.receive(recvPkt);
 				String[] data = new String(recvPkt.getData()).split("_");
-				if(data[0].equals(this.callid)) {
+				if(data != null && data[0].equals(this.callid)) {
 					flag = false;
 					str = new String(recvPkt.getData());
 				}
 			} while(flag); //while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
 			System.out.println("LOG: RPC Timeout occurred. Deleting session info from sessionTable");
-			rpcSocket.close();
-			return null;
-		} catch(InterruptedIOException iioe) {
-			//timeout
-//			System.out.println("IO exception");
-			recvPkt = null;
-		} catch(IOException ioe) {
-			//other error
-			//TODO retry receiving here
-//			System.out.println("Error");
-		}
+		} catch(Exception e) {
+//		  Error	
+		} 
+		try{
 		rpcSocket.close();
+		} catch(Exception e) {
+			//do nothing
+		}
 		return str;
+	}
+	
+	public String run(){
+		initRequest();
+	    String result = null;
+	    switch (this.opcode) {
+		case Project1bService.SESSIONREAD :
+			try {
+				String sessionTableValue = SessionReadClient();
+				int sessionTableVersion = Project1bService.NOVERSION;
+				if(sessionTableValue != null) {
+					int indexofcallid = sessionTableValue.indexOf("_");
+					sessionTableValue = sessionTableValue.substring(indexofcallid+1);
+					try{
+						sessionTableVersion = Integer.valueOf(sessionTableValue.split("_")[0]);
+						if(version == sessionTableVersion)
+							result = sessionTableValue;
+					}catch (Exception e) {
+						result = null;
+					}
+				}
+			} catch (IOException e) {
+				result = null;
+				System.out.println("LOG: rpc failed");
+			} 
+			break;
+		case Project1bService.SESSIONWRITE:
+			try {
+//				System.out.println("In sessionWrite: opcode" +this.opcode);
+				result = SessionBackup();
+			} catch (IOException e) {
+				result = null;
+				System.out.println("LOG: rpc failed");
+			}
+			break;
+		case Project1bService.SESSIONREMOVE:
+			try {
+				SessionRemoveClient();
+			} catch (UnknownHostException e) {
+				//do nothing
+			}
+			break;
+		default:
+			break;
+	    }
+		return result;  
 	}
 	
 	//
@@ -83,8 +179,10 @@ public class ClientRPC {
 	//
 	public String SessionReadClient() throws IOException {
 		String result = null;
-		int count = 1;
+		int count = 0;
 		for(int i = 0; i < destAddrs.length; i++){
+//			TODO: Hack to sent locally
+//			if(destAddrs.equals(Project1bService.getIPNull())){
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
 				count++;
@@ -96,6 +194,7 @@ public class ClientRPC {
 			    sendPacket(destAddrs[i], destPorts[i]);
 			}
 		}
+		System.out.println("count: "+count + " length: "+destAddrs.length);
 		if(count != destAddrs.length)
 		    result = receivePacket();
 		return result;
@@ -103,6 +202,8 @@ public class ClientRPC {
 
 	private String SessionBackup() throws IOException {
 		for(int i = 0; i < destAddrs.length; i++){
+//			TODO: Hack to sent locally
+//			if(destAddrs.equals(Project1bService.getIPNull())){
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
 			}
@@ -114,38 +215,20 @@ public class ClientRPC {
 		return result;
 	}
 	
-	public String run() {
-		if(this.opcode == Project1bService.SESSIONREAD){
-			try {
-				String sessionTableValue = SessionReadClient();
-				if(sessionTableValue == null) {
-					return null;
-				}
-				
-				int indexofcallid = sessionTableValue.indexOf("_");
-				sessionTableValue = sessionTableValue.substring(indexofcallid+1);
-				
-				int sessionTableVersion = Integer.valueOf(sessionTableValue.split("_")[0]);
-				if(version == sessionTableVersion)
-					return sessionTableValue;
-				else
-					return null;
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				System.out.println("LOG: rpc failed");
-			} 
-		} else if(this.opcode == Project1bService.SESSIONWRITE) {
-			try {
-//				System.out.println("In sessionWrite: opcode" +this.opcode);
-				String IPP_backup = SessionBackup();
-				return IPP_backup;
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				//e.printStackTrace();
-				System.out.println("LOG: rpc failed");
+	private void SessionRemoveClient() throws UnknownHostException {
+		// TODO Auto-generated method stub
+		for(int i = 0; i < destAddrs.length; i++){
+//			TODO: Hack to sent locally
+//			if(destAddrs.equals(Project1bService.getIPNull())){
+			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
+				//do nothing
+				System.out.println("LOG: NO RPC");
 			}
-		}
-		return null;
+			else{
+				String s= ""+destAddrs[i];
+				System.out.println("LOG: CLIENT addr: "+ s);
+			    sendPacket(destAddrs[i], destPorts[i]);
+			}
+		}	
 	}
 }
