@@ -52,10 +52,14 @@ public class Project1bService extends HttpServlet {
 	private static boolean crashed = false;
 	
 	//OPCODES FOR RPC 
+	private static final int SESSIONREADVAL = 1000;
+	private static final int SESSIONWRITEVAL = 1001;
+	private static final int SESSIONDELETEVAL = 1002;
 	public static enum OPCODE{
-		SESSIONREAD (1000),
-		SESSIONWRITE (1001),
-		SESSIONDELETE (1002);
+		SESSIONREAD (SESSIONREADVAL),
+		SESSIONWRITE (SESSIONWRITEVAL),
+		SESSIONDELETE (SESSIONDELETEVAL);
+		
 		
 		public final int value;
 		
@@ -69,11 +73,11 @@ public class Project1bService extends HttpServlet {
 		
 		public static OPCODE lookup(int val) {
 			switch (val) {
-			case SESSIONREAD.value :
+			case SESSIONREADVAL :
 				return SESSIONREAD;
-			case SESSIONWRITE.value :
+			case SESSIONWRITEVAL :
 				return SESSIONWRITE;
-			case SESSIONDELETE.value :
+			case SESSIONDELETEVAL :
 				return SESSIONDELETE;
 			}
 			
@@ -146,13 +150,15 @@ public class Project1bService extends HttpServlet {
 	    }
 	
 	
-	protected void init(){
-		//TODO: Should we schedule a timmer to clean up or not
-//		 RunTimer runTimer = new RunTimer();
-//	     timer.schedule(runTimer, SCHEDULER_TIMEOUT);
+	public void init(){
 		memberSet.add("192.168.1.9_51310");
 		memberSet.add("192.168.204.1_51305");
-		RPCServer = new ServerRPC();
+		try {
+			RPCServer = new ServerRPC();
+		} catch (SocketException e) {
+			System.out.println("Failed to create RPC server.");
+			e.printStackTrace();
+		}
 		serverPort = RPCServer.serverPort;
 		System.out.println("serverport: "+serverPort);
 		new Thread(RPCServer).start();
@@ -356,7 +362,10 @@ public class Project1bService extends HttpServlet {
 			destAddrs[i] = InetAddress.getByName(values[0]);
 			destPorts[i++] = Integer.valueOf(values[1]);
 		}
-		String arguments = SESSIONWRITE +"_" + SID +"_" + value.toString(); 
+		//TODO Aaron: I suspect that the following "value.toString()" might not be what we want
+		// mostly because value is already a string. Also consider using following line
+		//String arguments = ClientRPC.makeArgument(OPCODE.SESSIONWRITE, SID, version)
+		String arguments = OPCODE.SESSIONWRITE.value +"_" + SID +"_" + value.toString(); 
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
 		String result = client.run();
 		return result;
@@ -415,7 +424,10 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		if (crashed) return;
+		if (crashed) { 
+			response.sendError(response.SC_EXPECTATION_FAILED);
+			return;
+		}
 		
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
@@ -439,7 +451,10 @@ public class Project1bService extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
-		if (crashed) return;
+		if (crashed) { 
+			response.sendError(response.SC_EXPECTATION_FAILED);
+			return;
+		}
 		
 		PrintWriter out = response.getWriter();
 		String SID = getSessionID(request);
@@ -450,7 +465,7 @@ public class Project1bService extends HttpServlet {
 		Cookie clientCookie = getCookie(request.getCookies(), COOKIE_NAME);	
 		String values[] = clientCookie.getValue().split("_");
 		int version = Integer.valueOf(values[3]);
-		String sessionID = getSessionID(HttpServletRequest);
+		String sessionID = getSessionID(request);
 		String IPP_primary = values[4];
 		String IPP_backup = values[5];
 		String IPP_local = this.IPP;
@@ -474,9 +489,15 @@ public class Project1bService extends HttpServlet {
 				ClientRPC deletecall = new ClientRPC(args, destAddrs, destPorts);
 				deletecall.run();
 			}
-			runSessionTableCleaner();
+			try {
+				runSessionTableCleaner();
+			} catch (ParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		} else if (action.equals("CrashServer")) {
 			RPCServer.crashed = true;
+			RPCServer.teardown();
 			crashed = true;
 		} else {
 			//Extract replace string and set to startMessage
