@@ -110,7 +110,7 @@ public class ClientRPC {
 			destAddrs[0] = InetAddress.getByName("192.168.1.2");
 			destPorts[0] = 51305;
 			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getIPP())){
+			if(destAddrs[i].equals( Project1bService.getInetAddr())){
 				//do nothing
 			}
 			else{
@@ -128,7 +128,7 @@ public class ClientRPC {
 			destAddrs[0] = InetAddress.getByName("192.168.1.9");
 			destPorts[0] = 51303;
 			//System.out.println("destaddr: "+destAddrs[i]+"   "+Project1bService.getIPP());
-			if(destAddrs[i].equals( Project1bService.getIPP())){
+			if(destAddrs[i].equals( Project1bService.getInetAddr())){
 				//do nothing
 			}
 			else{

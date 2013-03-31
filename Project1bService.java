@@ -120,7 +120,7 @@ public class Project1bService extends HttpServlet {
 	 * @throws UnknownHostException 
 	 */
 	
-	public static InetAddress getIPP() throws UnknownHostException{
+	public static InetAddress getInetAddr() throws UnknownHostException{
 		return InetAddress.getByName(IPP.split("_")[0]);
 	}
 	
@@ -466,8 +466,10 @@ public class Project1bService extends HttpServlet {
 		String values[] = clientCookie.getValue().split("_");
 		int version = Integer.valueOf(values[3]);
 		String sessionID = getSessionID(request);
-		String IPP_primary = values[4];
-		String IPP_backup = values[5];
+		String IP_primary = values[4];
+		String port_primary = values[5];
+		String IP_backup = values[6];
+		String port_backup = values[7];
 		String IPP_local = this.IPP;
  
 		if (action.equals("Logout")) {
@@ -480,12 +482,12 @@ public class Project1bService extends HttpServlet {
 				//TODO Aaron: I should clean this up
 				//TODO Aaron: also maybe find a better way to delete at this server
 				String args = ClientRPC.makeArgument(opcode, sessionID, version);
-				InetAddress[] destAddrs = {InetAddress.getByName(values[4]),
-						InetAddress.getByName(values[6]),
-						getIPP()};
-				int[] destPorts = {Integer.valueOf(values[5]), 
-						Integer.valueOf(values[7]), 
-						Integer.valueOf(IPP.split("_")[1])};;
+				InetAddress[] destAddrs = {InetAddress.getByName(IP_primary),
+						InetAddress.getByName(IP_backup),
+						getInetAddr()};
+				int[] destPorts = {Integer.valueOf(port_primary), 
+						Integer.valueOf(port_backup), 
+						Integer.valueOf(IPP_local.split("_")[1])};;
 				ClientRPC deletecall = new ClientRPC(args, destAddrs, destPorts);
 				deletecall.run();
 			}
