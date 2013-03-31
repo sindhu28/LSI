@@ -1,3 +1,4 @@
+package edu.cornell.cs5300.Project1b;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -270,16 +271,21 @@ public class Project1bService extends HttpServlet {
 //			IPP_primary = myIP + "_" +serverPort;
 			int versionNo = 1;
 			int session = sessionID.incrementAndGet(); 
+			
 			SID = ""+session+"_"+IPP_primary;
 			value = ""+versionNo +"_" + startMessage + "_" +time;
+			
 			IPP_backup = RPCSessionTableUpdate(SID, value);
 			if (IPP_backup == null) {
 				IPP_backup = IPP_null;
 			}
 			IPP_backup =  IPP_backup.split("_")[1]+"_"+IPP_backup.split("_")[2];
+			
 			sessionTable.put(SID, value);
+			
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
 			clientCookie = new Cookie(COOKIE_NAME, URLEncoder.encode(cookieValue, "UTF-8"));
+			
 		} else { 
 			// Update the existing cookie with new values
 			SID = getSessionID(request);
@@ -383,7 +389,7 @@ public class Project1bService extends HttpServlet {
 				+ "<input style=\"display:inline;\"type=\"submit\" name=\"Action\" value=\"Replace\"/> <input type=\"text\" name=\"replace_string\"/></br><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Refresh\" /><br/><br/>"
 				+ "<input type=\"submit\" name=\"Action\" value=\"Logout\" /><br/><br/></form>"
-				+ "<input type=\"submit\" name=\"Action\" value=\"crash\" /><br/><br/></form>"
+				+ "<input type=\"submit\" name=\"Action\" value=\"Crash\" /><br/><br/></form>"
 				+ "Session on " + hostname
 				+ ":" + port + "<br/><br/>"
 				+ "Found on IPP: " + CookieIPP.split("_")[0] + "<br/><br/>"
@@ -460,6 +466,15 @@ public class Project1bService extends HttpServlet {
 				    sessionTable.remove(SID);
 			}
 			out.println("<h2>"+END_MESSAGE+"</h2>");	
+		} else if(action.equals("Crash")) {
+			while(true) {
+				try {
+					Thread.sleep(10000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		} else {
 			//Extract replace string and set to startMessage
 			if (action.equals("Replace")) {
