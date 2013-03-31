@@ -438,65 +438,70 @@ public class Project1bService extends HttpServlet {
 			if (action.equals("Replace")) {
 				startMessage = request.getParameter("replace_string");
 			}
+			String sessionTableValue = null;
 			Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
-			String value =  URLDecoder.decode(cookie.getValue(), "UTF-8").trim();
-			String[] values = value.split("_");
-			String primary = values[4]+"_"+values[5];
-			String backup = values[6]+"_"+values[7];
-			String cache = IPP;
+			if(cookie != null){
+			    String value =  URLDecoder.decode(cookie.getValue(), "UTF-8").trim();
+			    if(value != null){
+			    	String[] values = value.split("_");
+			    	String primary = values[4]+"_"+values[5];
+			    	String backup = values[6]+"_"+values[7];
+			    	String cache = IPP;
 			
-			String sessionTableValue = getSessionValue(request);
-			System.out.println(sessionTableValue);
+			    	sessionTableValue = getSessionValue(request);
+			    	System.out.println("sessiontablevalue before: "+sessionTableValue);
 			
-			if(sessionTableValue != null){
+			    	if(sessionTableValue != null){
 			//tokens = sessionTableValue + IPP where it was found
-			String[] tokens = sessionTableValue.split("_");
-			System.out.println(Arrays.toString(tokens));
-			CookieIPP = (sessionTableValue.split("_")[tokens.length-2]+"_"+sessionTableValue.split("_")[tokens.length-1]).trim();
-			System.out.println(CookieIPP);
-			if(CookieIPP == cache)
-				CookieIPP = "cache";
-			else if(CookieIPP == primary)
+			    		String[] tokens = sessionTableValue.split("_");
+			    		System.out.println("tokens: "+Arrays.toString(tokens));
+			    		CookieIPP = (sessionTableValue.split("_")[tokens.length-2]+"_"+sessionTableValue.split("_")[tokens.length-1]).trim();
+			    		System.out.println("cookieIP: "+CookieIPP+" "+CookieIPP.equals(cache)+" "+CookieIPP.equals(primary)+" "+CookieIPP.equals(backup));
+			    		if(CookieIPP.equals(cache))
+			    			CookieIPP = "cache";
+			    		else if(CookieIPP.equals(primary))
 				CookieIPP = "IPP_Primary";
-			else if(CookieIPP == backup)
+			    		else if(CookieIPP.equals(backup))
 				CookieIPP = "IPP_Backup";
-			else
-			    CookieIPP = "NONE";
-			sessionTableValue = "";
-			for(int i=0; i< tokens.length-3; i++)
-				sessionTableValue += tokens[i]+"_";
-			sessionTableValue += tokens[tokens.length-3];
-			System.out.println(sessionTableValue);
-			}
+			    		else
+			    			CookieIPP = "NONE";
+			    		sessionTableValue = "";
+			    		for(int i=0; i< tokens.length-3; i++)
+			    			sessionTableValue += tokens[i]+"_";
+			    		sessionTableValue += tokens[tokens.length-3];
+			    		System.out.println("sessiontablevalue after: "+sessionTableValue);
+			    	}
 			
 			
-			//Handle valid and stale(expired) cookies 
-			if(sessionTableValue == null) {
-				if(SID!=null && sessionTable.contains(SID))
-				    sessionTable.remove(SID);
-				out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
-				return;
-			} else {
+			        //Handle valid and stale(expired) cookies 
+			    	if(sessionTableValue == null) {
+			    		if(SID!=null && sessionTable.contains(SID))
+			    			sessionTable.remove(SID);
+			    		out.println("<h2>"+"SessionTimeout occurred"+"</h2>");
+			    		return;
+			    	} else {
 			
-				try {
-					if(!isCookieStale(sessionTableValue)) {
-						//Refresh the page with the same text retained only if cookie is valid
-						if(action.equals("Refresh")) {
-							startMessage = getMessage(sessionTable.get(SID));
-						}
-					} else { //Cookie is stale so remove entry from session table
-						if(SID!=null && sessionTable.contains(SID))
-						    sessionTable.remove(SID);
-					}
-				} catch (ParseException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			//Validate startMessage
-			//Ensure the entered message is <= MAX_STRING_LENGTH(512 bytes)
-			if(startMessage.length() > MAX_STRING_LENGTH){
-				startMessage = startMessage.substring(0, MAX_STRING_LENGTH);
+			    		try {
+			    			if(!isCookieStale(sessionTableValue)) {
+			    				//Refresh the page with the same text retained only if cookie is valid
+			    				if(action.equals("Refresh")) {
+			    					startMessage = getMessage(sessionTable.get(SID));
+			    				}
+			    			} else { //Cookie is stale so remove entry from session table
+			    				if(SID!=null && sessionTable.contains(SID))
+			    					sessionTable.remove(SID);
+			    			}
+			    		} catch (ParseException e) {
+			    			// TODO Auto-generated catch block
+			    			e.printStackTrace();
+			    		}
+			    	}
+			    	//Validate startMessage
+			    	//Ensure the entered message is <= MAX_STRING_LENGTH(512 bytes)
+			    	if(startMessage.length() > MAX_STRING_LENGTH){
+			    		startMessage = startMessage.substring(0, MAX_STRING_LENGTH);
+			    	}
+			    }
 			}
 			
 			//Update cookie for all further actions except Logout
