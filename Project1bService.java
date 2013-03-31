@@ -610,7 +610,8 @@ public class Project1bService extends HttpServlet {
 		String action = request.getParameter("Action");
 		String CookieIPP = "NONE";
 		IPP = InetAddress.getLocalHost().getHostAddress()+"_"+serverPort;
- 
+		String sessionTableValue = null;
+		Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
 		if (action.equals("Logout")) {
 			//remove session table entry and print bye message
 			synchronized(this) {
@@ -618,12 +619,13 @@ public class Project1bService extends HttpServlet {
 					sessionTable.remove(SID);
 			}
 			RPCSessionTableRemove(SID);
+			//Deletes cookie from browser on logout
+			cookie.setMaxAge(0);
+			response.addCookie(cookie);
 			out.println("<h2>"+END_MESSAGE+"</h2>");	
 		} else if(action.equals("Crash")) {
 				CRASH = true;
 		} else {
-			String sessionTableValue = null;
-			Cookie cookie = getCookie(request.getCookies(), COOKIE_NAME);
 			if(cookie != null){
 				String[] values = getValuesFromCookie(cookie);
 //			    String value =  URLDecoder.decode(cookie.getValue(), "UTF-8").trim();
