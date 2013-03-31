@@ -449,14 +449,14 @@ public class Project1bService extends HttpServlet {
 			    	String cache = IPP;
 			
 			    	sessionTableValue = getSessionValue(request);
-			    	System.out.println("sessiontablevalue before: "+sessionTableValue);
+			    	System.out.println("LOG: sessiontablevalue before: "+sessionTableValue);
 			
 			    	if(sessionTableValue != null){
 			//tokens = sessionTableValue + IPP where it was found
 			    		String[] tokens = sessionTableValue.split("_");
-			    		System.out.println("tokens: "+Arrays.toString(tokens));
+			    		System.out.println("LOG: tokens: "+Arrays.toString(tokens));
 			    		CookieIPP = (sessionTableValue.split("_")[tokens.length-2]+"_"+sessionTableValue.split("_")[tokens.length-1]).trim();
-			    		System.out.println("cookieIP: "+CookieIPP+" "+CookieIPP.equals(cache)+" "+CookieIPP.equals(primary)+" "+CookieIPP.equals(backup));
+			    		System.out.println("LOG: cookieIP: "+CookieIPP+" "+CookieIPP.equals(cache)+" "+CookieIPP.equals(primary)+" "+CookieIPP.equals(backup));
 			    		if(CookieIPP.equals(cache))
 			    			CookieIPP = "cache";
 			    		else if(CookieIPP.equals(primary))
@@ -469,7 +469,7 @@ public class Project1bService extends HttpServlet {
 			    		for(int i=0; i< tokens.length-3; i++)
 			    			sessionTableValue += tokens[i]+"_";
 			    		sessionTableValue += tokens[tokens.length-3];
-			    		System.out.println("sessiontablevalue after: "+sessionTableValue);
+			    		System.out.println("LOG: sessiontablevalue after: "+sessionTableValue);
 			    	}
 			
 			

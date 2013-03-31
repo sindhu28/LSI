@@ -61,7 +61,7 @@ public class ClientRPC {
 				}
 			} while(flag); //while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
-//			System.out.println("RPC Timeout occurred. Deleting session info from sessionTable");
+			System.out.println("LOG: RPC Timeout occurred. Deleting session info from sessionTable");
 			rpcSocket.close();
 			return null;
 		} catch(InterruptedIOException iioe) {
@@ -82,16 +82,22 @@ public class ClientRPC {
 	// with multiple [destAddr, destPort] pairs
 	//
 	public String SessionReadClient() throws IOException {
-		String result;
+		String result = null;
+		int count = 1;
 		for(int i = 0; i < destAddrs.length; i++){
 			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				//do nothing
+				count++;
+				System.out.println("LOG: NO RPC");
 			}
 			else{
+				String s= ""+destAddrs[i];
+				System.out.println("LOG: CLIENT addr: "+ s);
 			    sendPacket(destAddrs[i], destPorts[i]);
 			}
 		}
-		result = receivePacket();
+		if(count != destAddrs.length)
+		    result = receivePacket();
 		return result;
 	}
 
@@ -127,7 +133,7 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-//				System.out.println("rpc failed");
+				System.out.println("LOG: rpc failed");
 			} 
 		} else if(this.opcode == Project1bService.SESSIONWRITE) {
 			try {
@@ -137,7 +143,7 @@ public class ClientRPC {
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				//e.printStackTrace();
-//				System.out.println("rpc failed");
+				System.out.println("LOG: rpc failed");
 			}
 		}
 		return null;

@@ -21,6 +21,7 @@ public class ServerRPC implements Runnable{
 		String result;
 		while(true) {
 			try {
+				System.out.println("LOG: SERVER-waiting on SOCKET");
 				rpcSocket.receive(recvPkt);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -82,14 +83,14 @@ public class ServerRPC implements Runnable{
 		String key = arguments[2]+"_"+arguments[3]+"_"+arguments[4];
         String value = arguments[5]+"_"+arguments[6]+"_"+arguments[7];
 		String IPP_backup = Project1bService.setSessionTableEntry(key, value);
-		System.out.println("server-SessionBackup: "+IPP_backup);
+		System.out.println("LOG: server-SessionBackup: "+IPP_backup);
 		return IPP_backup;
 	}
 
 	private String SessionRead(String[] arguments) {
 		String sessionID = arguments[2] + "_" + arguments[3] + "_" + arguments[4];
 		String sessionEntry = Project1bService.getSessionTableEntry(sessionID);
-		System.out.println("server-SessionRead: "+sessionEntry+"_"+Project1bService.getIPP());
+		System.out.println("LOG: server-SessionRead: "+sessionEntry+"_"+Project1bService.getIPP());
 		if(sessionEntry != null)
 		    return sessionEntry+"_"+Project1bService.getIPP();
 		else
