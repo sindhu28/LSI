@@ -545,6 +545,13 @@ public class Project1bService extends HttpServlet {
 //		}
 //		else
 //			System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" No cookie");
+		if(CRASH == true){
+			try {
+				Thread.sleep(1000000000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+			} 
+		}
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
 		String startMessage = START_MESSAGE;
@@ -568,13 +575,7 @@ public class Project1bService extends HttpServlet {
 		if(cookieBackup == DUMMYIPP)
 			cookieBackup = "IPP_null";
 		out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getServerPort(),"NONE", cookieBackup));
-		if(CRASH == true){
-			try {
-				Thread.sleep(1000000000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-			} 
-		}
+		
 		//TODO:HACK
 //		out.println(generateMarkup(startMessage, myIP, request.getServerPort(),"NONE", cookieBackup));
 	}
@@ -593,6 +594,13 @@ public class Project1bService extends HttpServlet {
 //		}
 //		else
 //			System.out.println("LOG: in doPost(), IPP, cookie value "+IPP+" No cookie");
+		if(CRASH == true){
+			try {
+				Thread.sleep(1000000000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+			} 
+		}
 		
 		System.out.println("sessiontable: "+sessionTable);
 		PrintWriter out = response.getWriter();
@@ -685,15 +693,7 @@ public class Project1bService extends HttpServlet {
 			String cookieBackup = updateCookie(request, response, startMessage);
 			if(cookieBackup == DUMMYIPP)
 				cookieBackup = "IPP_null";
-			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), CookieIPP, cookieBackup));
-			CRASH = true;
-			if(CRASH == true){
-				try {
-					Thread.sleep(1000000000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-				} 
-			}
+			out.println(generateMarkup(startMessage, InetAddress.getLocalHost().getHostAddress(), request.getLocalPort(), CookieIPP, cookieBackup));			
 			//TODO:HACK
 //			out.println(generateMarkup(startMessage, myIP, request.getLocalPort(), CookieIPP, cookieBackup));
 		}

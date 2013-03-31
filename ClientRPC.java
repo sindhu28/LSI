@@ -177,41 +177,51 @@ public class ClientRPC {
 	// SessionReadClient(sessionID, sessionVersionNum)
 	// with multiple [destAddr, destPort] pairs
 	//
-	public String SessionReadClient() throws IOException {
+	public String SessionReadClient() throws UnknownHostException{
 		String result = null;
 		int count = 0;
-		for(int i = 0; i < destAddrs.length; i++){
-//			TODO: Hack to sent locally
-//			if(destAddrs.equals(Project1bService.getIPNull())){
-			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
-				//do nothing
-				count++;
-				System.out.println("LOG: NO RPC");
+		System.out.println("destAddress: "+destAddrs.length);
+		if(destAddrs != null){
+			for(int i = 0; i < destAddrs.length; i++){
+//				TODO: Hack to sent locally
+//			    if(destAddrs.equals(Project1bService.getIPNull())){
+				if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
+					//do nothing
+					System.out.println("LOG: NO RPC");
+				}
+				else{
+					String s= ""+destAddrs[i];
+					System.out.println("LOG: CLIENT addr: "+ s);
+					count++;
+					sendPacket(destAddrs[i], destPorts[i]);
+				}
 			}
-			else{
-				String s= ""+destAddrs[i];
-				System.out.println("LOG: CLIENT addr: "+ s);
-			    sendPacket(destAddrs[i], destPorts[i]);
-			}
+			System.out.println("count: "+count + " length: "+destAddrs.length);
+			if(count != 0)
+			    result = receivePacket();
 		}
-		System.out.println("count: "+count + " length: "+destAddrs.length);
-		if(count != destAddrs.length)
-		    result = receivePacket();
 		return result;
 	}
 
 	private String SessionBackup() throws IOException {
-		for(int i = 0; i < destAddrs.length; i++){
-//			TODO: Hack to sent locally
-//			if(destAddrs.equals(Project1bService.getIPNull())){
-			if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
-				//do nothing
+		int count = 0;
+		String result = null;
+		
+		if(destAddrs != null){
+			for(int i = 0; i < destAddrs.length; i++){
+				//			TODO: Hack to sent locally
+				//			if(destAddrs.equals(Project1bService.getIPNull())){
+				if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
+				}
+				else{
+					count++;
+					sendPacket(destAddrs[i], destPorts[i]);
+				}
 			}
-			else{
-			    sendPacket(destAddrs[i], destPorts[i]);
-			}
+			System.out.println("destAddress: "+destAddrs.length+ " "+count);
+			if(count != 0)
+			result = receivePacket();
 		}
-		String result = receivePacket();
 		return result;
 	}
 	
