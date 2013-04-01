@@ -66,6 +66,7 @@ public class Project1bService extends HttpServlet {
 	public static final int DELTA = 1000; //milliseconds
 	
 	public static boolean CRASH = false;
+	public static final int K = 3;
 	
 	//TODO:HACK
 	//public static String myIP = "192.168.1.5";
@@ -230,11 +231,12 @@ public class Project1bService extends HttpServlet {
 				sessionTableValue = getSessionTableEntry(SID)+"_"+IPP;
 			}
 			else{
-				if(values != null && values.length > 7){
-					InetAddress[] destAddrs = {InetAddress.getByName(values[4]),InetAddress.getByName(values[6])};
-					int[] destPorts = {Integer.valueOf(values[5]), Integer.valueOf(values[7])};
-					sessionTableValue = RPCSessionTableLookup(SID, version, destAddrs, destPorts);
-				}
+//				if(values != null && values.length > 7){
+//					InetAddress[] destAddrs = {InetAddress.getByName(values[4]),InetAddress.getByName(values[6])};
+//					int[] destPorts = {Integer.valueOf(values[5]), Integer.valueOf(values[7])};
+//					sessionTableValue = RPCSessionTableLookup(SID, version, destAddrs, destPorts);
+					sessionTableValue = RPCSessionTableLookup(SID, version, values);
+//				}
 			}
 			
 		}
@@ -502,21 +504,44 @@ public class Project1bService extends HttpServlet {
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
 		String result = client.run();
 		try{
-			IPP_backup =  result.split("_")[1]+"_"+result.split("_")[2];
+			int index = IPP_backup.indexOf("_");
+			IPP_backup = IPP_backup.substring(index+1);
 		}catch (Exception e) {
 			//do nothing
 		}
 		return IPP_backup;
 	}
 	
-	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts){
+//	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts){
+	private String RPCSessionTableLookup(String SID, int version, String[] values){
 		//Looks up for a valid entry in IPP_primary and IPP_backup
 		//It gets back values in response
 		//Call RPCClient
-		
-		String arguments = SESSIONREAD+"_"+SID+"_"+version; //TODO:opcode
-		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts); //TODO:opcode
-		String result = client.run();
+		String result = null;
+		if(values != null){
+			int length = values.length;
+			int size = 0;
+			if(length > 4)
+				size = (length-4)/2;
+			InetAddress[] destAddrs =  new InetAddress[size];
+			int[] destPorts =  new int[size];
+//			Integer.valueOf(values[5]), Integer.valueOf(values[7])
+			int idx = 0;
+			for(int i=4; i<length; i+=2){
+				//find all inetaddresses and ports
+				try {
+					destAddrs[idx] = InetAddress.getByName(values[i]);
+					destPorts[idx] = Integer.valueOf(values[i+1]);
+					idx++;
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+			}
+			String arguments = SESSIONREAD+"_"+SID+"_"+version;
+			ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
+			result = client.run();
+		}
 		return result;
 	}
 	

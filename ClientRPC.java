@@ -101,18 +101,18 @@ public class ClientRPC {
 	}
 	
 	public String receivePacket(){
-		boolean flag = true;
-		String str = null;
+		String str = "";
+		int c = Project1bService.K;
 		try {
 			do {
 				recvPkt.setLength(inBuf.length);
 				rpcSocket.receive(recvPkt);
+				c--;
 				String[] data = new String(recvPkt.getData()).split("_");
 				if(data != null && data[0].equals(this.callid)) {
-					flag = false;
-					str = new String(recvPkt.getData());
+					str += new String(recvPkt.getData())+"_";
 				}
-			} while(flag); //while(the callID in inBuf is not the expected one);
+			} while(c != 0); //while(the callID in inBuf is not the expected one);
 		} catch(SocketTimeoutException e) {
 			System.out.println("LOG: RPC Timeout occurred. Deleting session info from sessionTable");
 		} catch(Exception e) {
@@ -123,6 +123,8 @@ public class ClientRPC {
 		} catch(Exception e) {
 			//do nothing
 		}
+		if(str == "")
+			str = null;
 		return str;
 	}
 	
@@ -233,9 +235,10 @@ public class ClientRPC {
 				}
 			}
 			System.out.println("destAddress: "+destAddrs.length+ " "+count);
-			if(count != 0)
-			result = receivePacket();
-		}
+			if(count != 0){
+					result = receivePacket();
+				}
+			}
 		return result;
 	}
 	
