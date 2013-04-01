@@ -37,10 +37,10 @@ public class Project1bService extends HttpServlet {
 	private static final String START_MESSAGE = "Hello, User!";
 	private static final String END_MESSAGE = "Bye!";
 	private static final String COOKIE_NAME = "CS5300PROJ1SESSIONvn76";
-	private static final int EXPIRATION_PERIOD = 600000; //10 minutes in milliseconds
+	private static final int EXPIRATION_PERIOD = 300000; //5 minutes in milliseconds
 	private static final int MAX_STRING_LENGTH = 460; 
 	private static final int MAX_ENTRIES = 1000;
-	private static final int SCHEDULER_TIMEOUT = 600000; //10 minutes in milliseconds
+	private static final int SCHEDULER_TIMEOUT = 300000; //5 minutes in milliseconds
 	private static AtomicInteger sessionID = new AtomicInteger();
 	public static ConcurrentHashMap<String, String> sessionTable = new ConcurrentHashMap<String, String>();
 	private Timer timer = new Timer();
@@ -61,6 +61,8 @@ public class Project1bService extends HttpServlet {
 	public static final int RPCTIMEOUT = 1500;
 	public static final String DUMMYIP = "0.0.0.0";
 	public static final String DUMMYIPP = "0.0.0.0_0";
+	public static final int TOU = 2000; //milliseconds
+	public static final int DELTA = 1000; //milliseconds
 	
 	public static boolean CRASH = false;
 	
@@ -255,7 +257,8 @@ public class Project1bService extends HttpServlet {
 			Date oldDate = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US).parse(values[2]);
 			Timestamp oldTS = new Timestamp(oldDate.getTime());
 			Timestamp currentTS = new Timestamp(new Date().getTime());
-			long diffTS = currentTS.getTime() - oldTS.getTime();
+			//TOU and DELTA account for different in server clocks and network delays
+			long diffTS = currentTS.getTime() - oldTS.getTime() - TOU - DELTA;
 			if (diffTS < EXPIRATION_PERIOD)
 				stale = false;  //Cookie is not stale
 		}catch (Exception e) {
@@ -554,14 +557,14 @@ public class Project1bService extends HttpServlet {
 	protected String generateMarkup(String startMessage, String hostname, int port, String CookieIPP, String cookieBackup) {
 		//Time Expiry is calculated at current + 10 minutes. 
 		Date serverDate = new Date();
-		Calendar cal = Calendar.getInstance();
-		cal.setTime(serverDate);
-		cal.add(Calendar.MILLISECOND, EXPIRATION_PERIOD);
-		serverDate = cal.getTime(); //Date on server might be in different time zone
-		Date date = new Date(serverDate.getTime() + TimeZone.getTimeZone("EST").getRawOffset());
-			
-		SimpleDateFormat ft = new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a ", Locale.US);
-		String time = ft.format(date);
+		TimeZone estTZ= TimeZone.getTimeZone("EST");
+		Calendar estCal= Calendar.getInstance(estTZ);
+		estCal.add(Calendar.HOUR, 1);
+		SimpleDateFormat sdf= new SimpleDateFormat("MMMMM dd, yyyy hh:mm:ss a");
+		sdf.setTimeZone(estTZ);
+		Date estDate= estCal.getTime();
+		String time = sdf.format(estDate);
+		System.out.println("time: "+time);
 		
 		String members = "";
 		Iterator<String> it = memberSet.keySet().iterator();
