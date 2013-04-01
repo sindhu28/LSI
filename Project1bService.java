@@ -1,5 +1,3 @@
-package edu.cornell.cs5300.Project1b;
-
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -53,6 +51,7 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONREAD = 1000;
 	public static final int SESSIONWRITE = 1001;
 	public static final int SESSIONREMOVE = 1002;
+	public static final int GETMEMBERSET = 1003;
 	public static final int NOOPCODE = 0;
 	public static final int NOCALLID = 0;
 	public static final int NOVERSION = 0;
@@ -324,6 +323,9 @@ public class Project1bService extends HttpServlet {
 				System.out.println("LOG: Adding " +IPP_backup +" to memberset");
 				memberSet.put(IPP_backup,1);
 			}
+			
+			addToMemberSet(IPP_primary, IPP_backup);	
+			
 			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+ " "+IPP_backup);
 			
 			value = versionNo +"_" + startMessage + "_" +time;
@@ -343,6 +345,30 @@ public class Project1bService extends HttpServlet {
 		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
 		response.addCookie(clientCookie);
 		return IPP_backup;
+	}
+	
+	private void addToMemberSet(String IPP_primary, String IPP_backup) {
+		String memberset = RPCGetMemberSet(IPP_primary);
+		if(memberset == "")
+			memberset = RPCGetMemberSet(IPP_backup);
+		if(memberset != ""){
+			//add the IPPs to memberset
+			String[] members = getValues(memberset);
+			if(members != null){
+				int length = members.length-1;
+				if(length % 2 != 0)
+					length = length - 1;
+				length = length -2; //To account for incomplete IPP in the end of the packet
+				if(length > 0){
+					for(int i=1 ; i< length; i++){
+						//add member to memberset
+						String member = members[i] + members[i+1];
+						memberSet.put(member,1);
+						i++;
+					}
+				}
+			}
+		}
 	}
 	
 	private String getSIDFromCookieValues(String[] values) {
@@ -430,21 +456,25 @@ public class Project1bService extends HttpServlet {
 		return value;
 	}
 
-	private String RPCSessionTableUpdate(String SID, String value) throws UnknownHostException, SocketException, UnsupportedEncodingException {
+	private String RPCSessionTableUpdate(String SID, String value){
 		//Sends RPC to all servers in ServerList
 		//Returns the IPP of response from the first server
 		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
 		int[] destPorts = new int[memberSet.size()];
 		String IPP_backup = DUMMYIPP;
-		int i=0;	String member;
+		int i=0;	
+		String member;
 		Iterator it = memberSet.entrySet().iterator();
 		while (it.hasNext()) {
 			member = ((Map.Entry<String, Integer>)it.next()).getKey();
-		//for(String member: memberSet) {
-			String[] values = member.split("_");
-			destAddrs[i] = InetAddress.getByName(values[0]);
-			destPorts[i] = Integer.valueOf(values[1].trim());
-			i++;
+			try {
+				String[] values = member.split("_");
+				destAddrs[i] = InetAddress.getByName(values[0]);
+				destPorts[i] = Integer.valueOf(values[1].trim());
+				i++;
+			} catch (Exception e) {
+				//do nothing
+			}	
 		}
 		String arguments = SESSIONWRITE +"_" + SID +"_" + value.toString(); 
 		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
@@ -457,7 +487,7 @@ public class Project1bService extends HttpServlet {
 		return IPP_backup;
 	}
 	
-	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts) throws SocketException, UnsupportedEncodingException, UnknownHostException {
+	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts){
 		//Looks up for a valid entry in IPP_primary and IPP_backup
 		//It gets back values in response
 		//Call RPCClient
@@ -467,8 +497,30 @@ public class Project1bService extends HttpServlet {
 		String result = client.run();
 		return result;
 	}
+	
+	private String RPCGetMemberSet(String iPP){
+		String memberset = "";
+		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
+		int[] destPorts = new int[memberSet.size()];
+		if(iPP != null && iPP != IPP){
+			try {
+				String[] values = iPP.split("_");
+				System.out.println(values.toString());
+				destAddrs[0] = InetAddress.getByName(values[0]);
+				destPorts[0] = Integer.valueOf(values[1].trim());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			String arguments = ""+GETMEMBERSET; 
+			ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
+			memberset = client.run();
+		}	
+		return memberset;
+	}
 
-	private void RPCSessionTableRemove(String SID) throws SocketException, UnsupportedEncodingException, UnknownHostException {
+	private void RPCSessionTableRemove(String SID){
 		//Sends RPC to all servers in ServerList
 		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
 		int[] destPorts = new int[memberSet.size()];
@@ -476,12 +528,15 @@ public class Project1bService extends HttpServlet {
 		String member;
 		Iterator it = memberSet.entrySet().iterator();
 		while (it.hasNext()) {
-		member = ((Map.Entry<String, Integer>)it.next()).getKey();
-		//for(String member: memberSet) {
-			String[] values = member.split("_");
-			destAddrs[i] = InetAddress.getByName(values[0]);
-			destPorts[i] = Integer.valueOf(values[1].trim());
-			i++;
+			member = ((Map.Entry<String, Integer>)it.next()).getKey();
+			try {
+				String[] values = member.split("_");
+				destAddrs[i] = InetAddress.getByName(values[0]);
+				destPorts[i] = Integer.valueOf(values[1].trim());
+				i++;
+			} catch (Exception e) {
+				//do nothing
+			}	
 		}
 				
 		String arguments = SESSIONREMOVE+"_"+SID;
@@ -538,13 +593,6 @@ public class Project1bService extends HttpServlet {
 	protected void doGet(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
-//		Cookie c = getCookie(request.getCookies(), COOKIE_NAME);
-//		if(c != null){
-//		    String v = URLDecoder.decode(c.getValue(), "UTF-8").trim();
-//		    System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" ---"+v);
-//		}
-//		else
-//			System.out.println("LOG: in doGet(), IPP, cookie value "+IPP+" No cookie");
 		if(CRASH == true){
 			try {
 				Thread.sleep(1000000000);
@@ -587,13 +635,6 @@ public class Project1bService extends HttpServlet {
 	protected void doPost(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		
-//		Cookie c = getCookie(request.getCookies(), COOKIE_NAME);
-//		if(c != null){
-//		    String v = URLDecoder.decode(c.getValue(), "UTF-8").trim();
-//		    System.out.println("LOG: in doPost(), IPP, cookie value "+IPP+" ---"+v);
-//		}
-//		else
-//			System.out.println("LOG: in doPost(), IPP, cookie value "+IPP+" No cookie");
 		if(CRASH == true){
 			try {
 				Thread.sleep(1000000000);
@@ -743,6 +784,18 @@ public class Project1bService extends HttpServlet {
 	public static synchronized void removeSessionTableEntry(String sessionID) {
 		if(sessionID != null)
 			sessionTable.remove(sessionID);		
+	}
+	
+	public static String GetMemberSet() {
+		String memberset = "";
+		int i=0;
+		String member;
+		Iterator it = memberSet.entrySet().iterator();
+		while (it.hasNext()) {
+			member = ((Map.Entry<String, Integer>)it.next()).getKey();
+			memberset += member+"_";
+		}
+		return memberset;
 	}
 	
 }

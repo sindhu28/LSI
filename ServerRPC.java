@@ -1,4 +1,3 @@
-package edu.cornell.cs5300.Project1b;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -6,6 +5,8 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.Iterator;
+import java.util.Map;
 
 
 public class ServerRPC implements Runnable{
@@ -81,7 +82,7 @@ public class ServerRPC implements Runnable{
 					if(result != null) {
 		     		    try {
 							outBuf = result.getBytes("UTF-8");
-						} catch (UnsupportedEncodingException e) {
+						} catch (Exception e) {
 //							 TODO Auto-generated catch block
 //							e.printStackTrace();
 						}
@@ -93,7 +94,7 @@ public class ServerRPC implements Runnable{
 					if(result != null) {
 						try {
 							outBuf = result.getBytes("UTF-8");
-						} catch (UnsupportedEncodingException e) {
+						} catch (Exception e) {
 //							 TODO Auto-generated catch block
 //							e.printStackTrace();
 						}
@@ -102,6 +103,17 @@ public class ServerRPC implements Runnable{
 					break;
 				case Project1bService.SESSIONREMOVE:
 					SessionRemove(arguments);
+					break;
+				case Project1bService.GETMEMBERSET:
+					result = callid + "_" + Project1bService.GetMemberSet();
+					if(result != null) {
+						try {
+							outBuf = result.getBytes("UTF-8");
+						} catch (Exception e) {
+//							 TODO Auto-generated catch block
+//							e.printStackTrace();
+						}
+					}
 					break;
 				default:
 					continue;

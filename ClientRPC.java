@@ -1,6 +1,5 @@
-package edu.cornell.cs5300.Project1b;
-
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -146,7 +145,7 @@ public class ClientRPC {
 						result = null;
 					}
 				}
-			} catch (IOException e) {
+			} catch (Exception e) {
 				result = null;
 				System.out.println("LOG: rpc failed");
 			} 
@@ -155,7 +154,7 @@ public class ClientRPC {
 			try {
 //				System.out.println("In sessionWrite: opcode" +this.opcode);
 				result = SessionBackup();
-			} catch (IOException e) {
+			} catch (Exception e) {
 				result = null;
 				System.out.println("LOG: rpc failed");
 			}
@@ -163,7 +162,14 @@ public class ClientRPC {
 		case Project1bService.SESSIONREMOVE:
 			try {
 				SessionRemoveClient();
-			} catch (UnknownHostException e) {
+			} catch (Exception e) {
+				//do nothing
+			}
+			break;
+		case Project1bService.GETMEMBERSET:
+			try {
+				result = GetMemberSet();
+			} catch (Exception e) {
 				//do nothing
 			}
 			break;
@@ -211,6 +217,26 @@ public class ClientRPC {
 			for(int i = 0; i < destAddrs.length; i++){
 				//			TODO: Hack to sent locally
 				//			if(destAddrs.equals(Project1bService.getIPNull())){
+				if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
+				}
+				else{
+					count++;
+					sendPacket(destAddrs[i], destPorts[i]);
+				}
+			}
+			System.out.println("destAddress: "+destAddrs.length+ " "+count);
+			if(count != 0)
+			result = receivePacket();
+		}
+		return result;
+	}
+	
+	private String GetMemberSet() throws UnknownHostException {
+		String result = null;
+		int count = 0;
+		if(destAddrs != null){
+			for(int i = 0; i < destAddrs.length; i++){
+				//			TODO: Hack to sent locally
 				if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
 				}
 				else{
