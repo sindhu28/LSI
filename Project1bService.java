@@ -564,8 +564,16 @@ public class Project1bService extends HttpServlet {
 		String time = ft.format(date);
 		
 		String members = "";
-		for(int i=0; i<memberSet.size() ; i++)
-			members += memberSet.get(i) + "  ";
+		Iterator<String> it = memberSet.keySet().iterator();
+		while (it.hasNext()) {
+			//Remove all stale(expired) cookie entries from Session Table
+			try{
+				String key = it.next();
+				members += key+" ";
+			}catch (Exception e) {
+				//do nothing
+			}
+	    }
 		
 		String markup = "<h2>"
 				+ startMessage
