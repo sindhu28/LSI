@@ -115,11 +115,16 @@ public class ServerRPC implements Runnable{
 						}
 					}
 					break;
+				case Project1bService.REMOVESTALE:
+					RemoveStale(arguments);
+					break;
 				default:
 					continue;
 		    }
 		}
 	}
+
+
 
 	private String SessionRead(String[] arguments) {
 		String result = null;
@@ -142,6 +147,14 @@ public class ServerRPC implements Runnable{
 			System.out.println("LOG: server-SessionBackup: "+IPP_backup);
 		}
 		return IPP_backup;
+	}
+	
+	private void RemoveStale(String[] arguments) {
+		if(arguments.length > 4){
+			String SID = arguments[2] + "_" + arguments[3] + "_" + arguments[4];
+			Project1bService.removeSessionTableEntry(SID);	
+		}
+		
 	}
 	
 	private void SessionRemove(String[] arguments) {

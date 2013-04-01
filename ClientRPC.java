@@ -173,11 +173,19 @@ public class ClientRPC {
 				//do nothing
 			}
 			break;
+		case Project1bService.REMOVESTALE:
+			try {
+				RemoveStale();
+			} catch (Exception e) {
+				//do nothing
+			}
+			break;
 		default:
 			break;
 	    }
 		return result;  
 	}
+	
 	
 	//
 	// SessionReadClient(sessionID, sessionVersionNum)
@@ -249,6 +257,21 @@ public class ClientRPC {
 			result = receivePacket();
 		}
 		return result;
+	}
+	
+	private void RemoveStale() throws UnknownHostException {
+		int count = 0;
+		if(destAddrs != null){
+			for(int i = 0; i < destAddrs.length; i++){
+				//			TODO: Hack to sent locally
+				if(destAddrs[i].equals(Project1bService.getIP()) || destAddrs.equals(Project1bService.getIPNull())){
+				}
+				else{
+					count++;
+					sendPacket(destAddrs[i], destPorts[i]);
+				}
+			}
+		}		
 	}
 	
 	private void SessionRemoveClient() throws UnknownHostException {

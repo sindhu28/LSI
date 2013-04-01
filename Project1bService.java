@@ -52,6 +52,7 @@ public class Project1bService extends HttpServlet {
 	public static final int SESSIONWRITE = 1001;
 	public static final int SESSIONREMOVE = 1002;
 	public static final int GETMEMBERSET = 1003;
+	public static final int REMOVESTALE = 1004;
 	public static final int NOOPCODE = 0;
 	public static final int NOCALLID = 0;
 	public static final int NOVERSION = 0;
@@ -290,6 +291,7 @@ public class Project1bService extends HttpServlet {
 		int versionNo = NOVERSION;
 		String IPP_primary = DUMMYIPP;
 		String IPP_backup = DUMMYIPP;
+		String IPP_stale = DUMMYIPP;
 			
 		if (clientCookie == null) { 
 			//Create a new cookie for a new session if one does not exist 
@@ -305,7 +307,7 @@ public class Project1bService extends HttpServlet {
 			}
 			
 			IPP_backup = RPCSessionTableUpdate(SID, value);
-			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup+"_"+IPP_stale;
 			clientCookie = new Cookie(COOKIE_NAME, URLEncoder.encode(cookieValue, "UTF-8"));
 		} else { 
 			// Update the existing cookie with new values
@@ -327,9 +329,12 @@ public class Project1bService extends HttpServlet {
 				memberSet.put(IPP_backup,1);
 			}
 			
+			IPP_stale =  getstaleFromCookieValues(values);
+			RPCSessionTableRemoveStale(IPP_stale, SID);
+					
 			addToMemberSet(IPP_primary, IPP_backup);	
 			
-			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+ " "+IPP_backup);
+			System.out.println("LOG: In updateCookie() - add to memberset: "+IPP_primary+" "+IPP_backup+" "+IPP_stale);
 			
 			value = versionNo +"_" + startMessage + "_" +time;
 			if(SID!= null) {
@@ -340,9 +345,13 @@ public class Project1bService extends HttpServlet {
 						sessionTable.put(SID, value);
 				}
 			}
+			
+			IPP_stale = IPP_backup;
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort; //new IPP_primary
 			IPP_backup = RPCSessionTableUpdate(SID, value);								 //new IPP_backup
-			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup;
+			if(IPP_stale.equals(IPP_primary) || IPP_stale.equals(IPP_backup))
+				IPP_stale = DUMMYIPP;
+			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup+"_"+IPP_stale;
 			clientCookie.setValue(URLEncoder.encode(cookieValue, "UTF-8"));
 		}
 		clientCookie.setMaxAge((int) (EXPIRATION_PERIOD/1000)); //in seconds
@@ -392,6 +401,16 @@ public class Project1bService extends HttpServlet {
 			IPP_Backup = DUMMYIPP;
 		}
 		return IPP_Backup;
+	}
+	
+	private String getstaleFromCookieValues(String[] values) {
+		String IPP_stale;
+		try{
+			IPP_stale = values[8]+"_"+values[9];
+		}catch (Exception e) {
+			IPP_stale = DUMMYIPP;
+		}
+		return IPP_stale;
 	}
 
 	private String getPrimaryFromCookieValues(String[] values) {
@@ -503,8 +522,8 @@ public class Project1bService extends HttpServlet {
 	
 	private String RPCGetMemberSet(String iPP){
 		String memberset = "";
-		InetAddress[] destAddrs = new InetAddress[memberSet.size()];
-		int[] destPorts = new int[memberSet.size()];
+		InetAddress[] destAddrs = new InetAddress[1];
+		int[] destPorts = new int[1];
 		if(iPP != null && iPP != IPP){
 			try {
 				String[] values = iPP.split("_");
@@ -547,6 +566,25 @@ public class Project1bService extends HttpServlet {
 		client.run();
 	}
 	
+	private void RPCSessionTableRemoveStale(String iPP_stale, String SID) {
+		InetAddress[] destAddrs = new InetAddress[1];
+		int[] destPorts = new int[1];
+		if(iPP_stale != null){
+			try {
+				String[] values = iPP_stale.split("_");
+				System.out.println(values.toString());
+				destAddrs[0] = InetAddress.getByName(values[0]);
+				destPorts[0] = Integer.valueOf(values[1].trim());
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		String arguments = REMOVESTALE+"_"+SID;
+		ClientRPC client = new ClientRPC(arguments, destAddrs, destPorts);
+		client.run();
+	}
+	
 	/**
 	 * Generate HTML markup
 	 * @param startMessage
@@ -572,7 +610,7 @@ public class Project1bService extends HttpServlet {
 			//Remove all stale(expired) cookie entries from Session Table
 			try{
 				String key = it.next();
-				members += key+" ";
+				members += key+"    ";
 			}catch (Exception e) {
 				//do nothing
 			}
