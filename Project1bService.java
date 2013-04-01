@@ -326,7 +326,7 @@ public class Project1bService extends HttpServlet {
 			}
 				
 			IPP_backup =  getBackupFromCookieValues(values);
-			if(IPP_primary!=null && !IPP_backup.equals(IPP) && !memberSet.containsKey(IPP_backup) && !IPP_backup.equals(DUMMYIPP)){
+			if(IPP_backup!=null && !IPP_backup.equals(IPP) && !memberSet.containsKey(IPP_backup) && !IPP_backup.equals(DUMMYIPP)){
 				System.out.println("LOG: Adding " +IPP_backup +" to memberset");
 				memberSet.put(IPP_backup,1);
 			}
@@ -351,7 +351,7 @@ public class Project1bService extends HttpServlet {
 			IPP_stale = IPP_backup;
 			IPP_primary = InetAddress.getLocalHost().getHostAddress() + "_" +serverPort; //new IPP_primary
 			IPP_backup = RPCSessionTableUpdate(SID, value);								 //new IPP_backup
-			if(IPP_stale.equals(IPP_primary) || IPP_stale.equals(IPP_backup))
+			if(IPP_stale.equals(IPP_primary) || IPP_stale.equals(getIPPBackupFrom(IPP_backup)))
 				IPP_stale = DUMMYIPP;
 			String cookieValue = SID + "_" + versionNo +"_"+ IPP_primary +"_"+ IPP_backup+"_"+IPP_stale;
 			clientCookie.setValue(URLEncoder.encode(cookieValue, "UTF-8"));
@@ -361,6 +361,17 @@ public class Project1bService extends HttpServlet {
 		return IPP_backup;
 	}
 	
+	private String getIPPBackupFrom(String iPP_backup) {
+		// TODO Auto-generated method stub
+		String result = null;
+		try{
+		    result = (iPP_backup.split("_")[0]+"_"+iPP_backup.split("_")[1]);
+		}catch (Exception e){
+			result = null;
+		}
+		return result;
+	}
+
 	private void addToMemberSet(String IPP_primary, String IPP_backup) {
 		String memberset = RPCGetMemberSet(IPP_primary);
 		if(memberset == "")
@@ -510,6 +521,23 @@ public class Project1bService extends HttpServlet {
 			//do nothing
 		}
 		return IPP_backup;
+	}
+	
+	private void addIPPBackup(String iPP_backup) {
+		String[] values = getValues(iPP_backup);
+		System.out.println(values.toString());
+		if(values != null){
+			int length = values.length;
+			if(length % 2 != 0)
+				length = length-1;
+			for(int i=0; i<length; i+=2){
+				String ipp = values[i]+"_"+values[i+1];
+				if(ipp!=null && !ipp.equals(IPP) && !memberSet.containsKey(ipp) && !ipp.equals(DUMMYIPP)){
+					System.out.println("LOG: Adding " +ipp +" to memberset");
+					memberSet.put(ipp,1);
+				}
+			}
+		}
 	}
 	
 //	private String RPCSessionTableLookup(String SID, int version, InetAddress[] destAddrs, int[] destPorts){

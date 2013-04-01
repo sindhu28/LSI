@@ -91,6 +91,7 @@ public class ServerRPC implements Runnable{
 					break;
 				case Project1bService.SESSIONWRITE:
 					result = callid + "_" + SessionBackup(arguments);
+					System.out.println("RESULT:"+result);
 					if(result != null) {
 						try {
 							outBuf = result.getBytes("UTF-8");
